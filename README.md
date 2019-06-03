@@ -1,53 +1,55 @@
 # Payloads All The Things
-A list of useful payloads and bypasses for Web Application Security. 
+
+A list of useful payloads and bypasses for Web Application Security.
 Feel free to improve with your payloads and techniques !
-I <3 pull requests :)
+I :heart: pull requests :)
 
-# Tools
+You can also contribute with a beer IRL or with `buymeacoffee.com`
 
-* [Web Developper](https://addons.mozilla.org/en-Gb/firefox/addon/web-developer/)
-* [Hackbar](https://addons.mozilla.org/en-Gb/firefox/addon/hackbar/?src=search)
-* [Burp Proxy](https://portswigger.net)
-* [Fiddler](https://www.telerik.com/download/fiddler)
-* [DirBuster](https://sourceforge.net/projects/dirbuster/)
-* [GoBuster](https://github.com/OJ/gobuster)
-* [Knockpy](https://github.com/guelfoweb/knock)
-* [SQLmap](http://sqlmap.org)
-* [Eyewitness](https://github.com/ChrisTruncer/EyeWitness)
-* [Nikto](https://cirt.net/nikto2)
-* [Recon-ng](https://bitbucket.org/LaNMaSteR53/recon-ng)
-* [Wappalyzer](https://wappalyzer.com/download)
+[![Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoff.ee/swissky)
 
-# More resources
-Book's list:
-* [Web Hacking 101](https://leanpub.com/web-hacking-101)
-* [The Web Application Hacker's Handbook](https://www.amazon.fr/Web-Application-Hackers-Handbook-Exploiting/dp/1118026470)  
-* [OWASP Testing Guide v4](https://www.owasp.org/index.php/OWASP_Testing_Project)
-* [Penetration Testing: A Hands-On Introduction to Hacking](http://amzn.to/2dhHTSn)
-* [The Hacker Playbook 2: Practical Guide to Penetration Testing](http://amzn.to/2d9wYKa)
-* [The Mobile Application Hacker’s Handbook](http://amzn.to/2cVOIrE)
+Every section contains the following files, you can use the `_template_vuln` folder to create a new chapter:
 
-Blogs/Websites
-* http://blog.zsec.uk/101-web-testing-tooling/
-* https://blog.innerht.ml
-* https://blog.zsec.uk
-* https://www.exploit-db.com/google-hacking-database
-* https://www.arneswinnen.net
-* https://forum.bugcrowd.com/t/researcher-resources-how-to-become-a-bug-bounty-hunter/1102
+- README.md - vulnerability description and how to exploit it
+- Intruder - a set of files to give to Burp Intruder
+- Images - pictures for the README.md
+- Files - some files referenced in the README.md
 
-Youtube
-* [Hunting for Top Bounties - Nicolas Grégoire](https://www.youtube.com/watch?v=mQjTgDuLsp4)
-* [BSidesSF 101 The Tales of a Bug Bounty Hunter - Arne Swinnen](https://www.youtube.com/watch?v=dsekKYNLBbc)
-* [Security Fest 2016 The Secret life of a Bug Bounty Hunter - Frans Rosén](https://www.youtube.com/watch?v=KDo68Laayh8)
+You might also like the `Methodology and Resources` folder :
 
-Practice
-* [Root-Me](https://www.root-me.org)
-* [Zenk-Security](https://www.zenk-security.com/epreuves.php)
-* [W3Challs](https://w3challs.com/)
-* [NewbieContest](https://www.newbiecontest.org/)
-* [Vulnhub](https://www.vulnhub.com/)
-* [The Cryptopals Crypto Challenges](https://cryptopals.com/)
-* [Penetration Testing Practice Labs](http://www.amanhardikar.com/mindmaps/Practice.html)
-* [alert(1) to win](https://alf.nu/alert1)
-* [Hacksplaining](https://www.hacksplaining.com/exercises)
-* [PentesterLab :Learn Web Penetration Testing: The Right Way](https://pentesterlab.com/)
+- [Methodology and Resources](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/)
+  - [Active Directory Attack.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Active%20Directory%20Attack.md)
+  - [Linux - Persistence.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Linux%20-%20Persistence.md)
+  - [Linux - Privilege Escalation.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Linux%20-%20Privilege%20Escalation.md)
+  - [Metasploit - Cheatsheet.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Metasploit%20-%20Cheatsheet.md)  
+  - [Methodology_and_enumeration.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Methodology_and_enumeration.md)
+  - [Network Pivoting Techniques.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Network%20Pivoting%20Techniques.md)
+  - [Network Discovery.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Network%20Discovery.md)
+  - [Reverse Shell Cheatsheet.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Reverse%20Shell%20Cheatsheet.md)
+  - [Subdomains Enumeration.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Subdomains%20Enumeration.md)
+  - [Windows - Download and Execute.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Windows%20-%20Download%20and%20Execute.md)
+  - [Windows - Mimikatz.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Windows%20-%20Mimikatz.md)
+  - [Windows - Persistence.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Windows%20-%20Persistence.md)
+  - [Windows - Post Exploitation Koadic.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Windows%20-%20Post%20Exploitation%20Koadic.md)
+  - [Windows - Privilege Escalation.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Windows%20-%20Privilege%20Escalation.md)
+  - [Windows - Using credentials.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Windows%20-%20Using%20credentials.md)
+
+- [CVE Exploits](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/CVE%20Exploits)
+    - Apache Struts 2 CVE-2013-2251 CVE-2017-5638 CVE-2018-11776_.py
+    - Apache Struts 2 CVE-2017-5638.py
+    - Apache Struts 2 CVE-2017-9805.py
+    - Apache Struts 2 CVE-2018-11776.py
+    - Docker API RCE.py
+    - Drupalgeddon2 CVE-2018-7600.rb
+    - Heartbleed CVE-2014-0160.py
+    - JBoss CVE-2015-7501.py
+    - Jenkins CVE-2015-8103.py
+    - Jenkins CVE-2016-0792.py
+    - Shellshock CVE-2014-6271.py
+    - Tomcat CVE-2017-12617.py
+    - WebLogic CVE-2016-3510.py
+    - WebLogic CVE-2017-10271.py
+    - WebLogic CVE-2018-2894.py
+    - WebSphere CVE-2015-7450.py
+
+You want more ? Check the [Books](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/BOOKS.md) and [Youtube videos](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/YOUTUBE.md) selections.
