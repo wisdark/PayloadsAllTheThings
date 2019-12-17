@@ -4,9 +4,7 @@ A list of useful payloads and bypasses for Web Application Security.
 Feel free to improve with your payloads and techniques !
 I :heart: pull requests :)
 
-You can also contribute with a beer IRL or with `buymeacoffee.com`
-
-[![Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoff.ee/swissky)
+You can also contribute with a :beers: IRL
 
 Every section contains the following files, you can use the `_template_vuln` folder to create a new chapter:
 
@@ -22,7 +20,7 @@ You might also like the `Methodology and Resources` folder :
   - [Linux - Persistence.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Linux%20-%20Persistence.md)
   - [Linux - Privilege Escalation.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Linux%20-%20Privilege%20Escalation.md)
   - [Metasploit - Cheatsheet.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Metasploit%20-%20Cheatsheet.md)  
-  - [Methodology_and_enumeration.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Methodology_and_enumeration.md)
+  - [Methodology and enumeration.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Methodology%20and%20enumeration.md)
   - [Network Pivoting Techniques.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Network%20Pivoting%20Techniques.md)
   - [Network Discovery.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Network%20Discovery.md)
   - [Reverse Shell Cheatsheet.md](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Reverse%20Shell%20Cheatsheet.md)
@@ -36,7 +34,6 @@ You might also like the `Methodology and Resources` folder :
 
 - [CVE Exploits](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/CVE%20Exploits)
     - Apache Struts 2 CVE-2013-2251 CVE-2017-5638 CVE-2018-11776_.py
-    - Apache Struts 2 CVE-2017-5638.py
     - Apache Struts 2 CVE-2017-9805.py
     - Apache Struts 2 CVE-2018-11776.py
     - Docker API RCE.py
@@ -45,6 +42,7 @@ You might also like the `Methodology and Resources` folder :
     - JBoss CVE-2015-7501.py
     - Jenkins CVE-2015-8103.py
     - Jenkins CVE-2016-0792.py
+    - Rails CVE-2019-5420.rb
     - Shellshock CVE-2014-6271.py
     - Tomcat CVE-2017-12617.py
     - WebLogic CVE-2016-3510.py
