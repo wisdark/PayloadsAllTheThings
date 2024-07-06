@@ -8,7 +8,6 @@
 - [Exploit](#exploit)
     - [Google Maps](#google-maps)
     - [Algolia](#algolia)
-    - [AWS Access Key ID & Secret](#aws-access-key-id--secret)
     - [Slack API Token](#slack-api-token)
     - [Facebook Access Token](#facebook-access-token)
     - [Github client id and client secret](#github-client-id-and-client-secret)
@@ -23,17 +22,36 @@
 
 ## Tools
 
-- [KeyFinder - is a tool that let you find keys while surfing the web!](https://github.com/momenbasel/KeyFinder)
-- [KeyHacks - is a repository which shows quick ways in which API keys leaked by a bug bounty program can be checked to see if they're valid.](https://github.com/streaak/keyhacks)
-- [TruffleHog - Find credentials all over the place](https://github.com/trufflesecurity/truffleHog)
+- [momenbasel/KeyFinder](https://github.com/momenbasel/KeyFinder) - is a tool that let you find keys while surfing the web
+- [streaak/keyhacks](https://github.com/streaak/keyhacks) - is a repository which shows quick ways in which API keys leaked by a bug bounty program can be checked to see if they're valid
+- [trufflesecurity/truffleHog](https://github.com/trufflesecurity/truffleHog) - Find credentials all over the place
     ```ps1
-    docker run -it -v "$PWD:/pwd" trufflesecurity/trufflehog:latest github --repo https://github.com/trufflesecurity/test_keys
-    docker run -it -v "$PWD:/pwd" trufflesecurity/trufflehog:latest github --org=trufflesecurity
-    trufflehog git https://github.com/trufflesecurity/trufflehog.git
-    trufflehog github --endpoint https://api.github.com --org trufflesecurity --token GITHUB_TOKEN --debug --concurrency 2
-    ```
-- [Trivy - General purpose vulnerability and misconfiguration scanner which also searches for API keys/secrets](https://github.com/aquasecurity/trivy)
+    ## Scan a Github Organization
+    docker run --rm -it -v "$PWD:/pwd" trufflesecurity/trufflehog:latest github --org=trufflesecurity
     
+    ## Scan a GitHub Repository, its Issues and Pull Requests
+    docker run --rm -it -v "$PWD:/pwd" trufflesecurity/trufflehog:latest github --repo https://github.com/trufflesecurity/test_keys --issue-comments --pr-comments
+   
+    ## Scan a Docker image for verified secrets
+    docker run --rm -it -v "$PWD:/pwd" trufflesecurity/trufflehog:latest docker --image trufflesecurity/secrets
+    ```
+- [aquasecurity/trivy](https://github.com/aquasecurity/trivy) - General purpose vulnerability and misconfiguration scanner which also searches for API keys/secrets
+- [projectdiscovery/nuclei-templates](https://github.com/projectdiscovery/nuclei-templates) - Use these templates to test an API token against many API service endpoints
+    ```powershell
+    nuclei -t token-spray/ -var token=token_list.txt
+    ```
+- [blacklanternsecurity/badsecrets](https://github.com/blacklanternsecurity/badsecrets) - A library for detecting known or weak secrets on across many platforms
+    ```ps1
+    python examples/cli.py --url http://example.com/contains_bad_secret.html
+    python examples/cli.py eyJhbGciOiJIUzI1NiJ9.eyJJc3N1ZXIiOiJJc3N1ZXIiLCJVc2VybmFtZSI6IkJhZFNlY3JldHMiLCJleHAiOjE1OTMxMzM0ODMsImlhdCI6MTQ2NjkwMzA4M30.ovqRikAo_0kKJ0GVrAwQlezymxrLGjcEiW_s3UJMMCo
+    python ./badsecrets/examples/blacklist3r.py --viewstate /wEPDwUJODExMDE5NzY5ZGQMKS6jehX5HkJgXxrPh09vumNTKQ== --generator EDD8C9AE
+    python ./badsecrets/examples/telerik_knownkey.py --url http://vulnerablesite/Telerik.Web.UI.DialogHandler.aspx
+    python ./badsecrets/examples/symfony_knownkey.py --url https://localhost/
+    ```
+- [mazen160/secrets-patterns-db](https://github.com/mazen160/secrets-patterns-db) - Secrets Patterns DB: The largest open-source Database for detecting secrets, API keys, passwords, tokens, and more.
+- [d0ge/sign-saboteur](https://github.com/d0ge/sign-saboteur) - SignSaboteur is a Burp Suite extension for editing, signing, verifying various signed web tokens
+
+
 ## Exploit
 
 The following commands can be used to takeover accounts or extract personal information from the API using the leaked token.
@@ -42,24 +60,24 @@ The following commands can be used to takeover accounts or extract personal info
 
 Use : https://github.com/ozguralp/gmapsapiscanner/
 
-Usage:
-|   Name   |   Endpoint   |
-|   ---    |    --- |
-|   Static Maps    |   https://maps.googleapis.com/maps/api/staticmap?center=45%2C10&zoom=7&size=400x400&key=KEY_HERE   |
-|   Streetview |	https://maps.googleapis.com/maps/api/streetview?size=400x400&location=40.720032,-73.988354&fov=90&heading=235&pitch=10&key=KEY_HERE |
-|   Embed  |	https://www.google.com/maps/embed/v1/place?q=place_id:ChIJyX7muQw8tokR2Vf5WBBk1iQ&key=KEY_HERE  |
-|   Directions |	https://maps.googleapis.com/maps/api/directions/json?origin=Disneyland&destination=Universal+Studios+Hollywood4&key=KEY_HERE    |
-|   Geocoding  |	https://maps.googleapis.com/maps/api/geocode/json?latlng=40,30&key=KEY_HERE |
-|   Distance Matrix    |	https://maps.googleapis.com/maps/api/distancematrix/json?units=imperial&origins=40.6655101,-73.89188969999998&destinations=40.6905615%2C-73.9976592%7C40.6905615%2C-73.9976592%7C40.6905615%2C-73.9976592%7C40.6905615%2C-73.9976592%7C40.6905615%2C-73.9976592%7C40.6905615%2C-73.9976592%7C40.659569%2C-73.933783%7C40.729029%2C-73.851524%7C40.6860072%2C-73.6334271%7C40.598566%2C-73.7527626%7C40.659569%2C-73.933783%7C40.729029%2C-73.851524%7C40.6860072%2C-73.6334271%7C40.598566%2C-73.7527626&key=KEY_HERE   |
-|   Find Place from Text   |	https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=Museum%20of%20Contemporary%20Art%20Australia&inputtype=textquery&fields=photos,formatted_address,name,rating,opening_hours,geometry&key=KEY_HERE    |
-|   Autocomplete   |	https://maps.googleapis.com/maps/api/place/autocomplete/json?input=Bingh&types=%28cities%29&key=KEY_HERE    |
-|   Elevation  |	https://maps.googleapis.com/maps/api/elevation/json?locations=39.7391536,-104.9847034&key=KEY_HERE  |
-|   Timezone   |	https://maps.googleapis.com/maps/api/timezone/json?location=39.6034810,-119.6822510&timestamp=1331161200&key=KEY_HERE   |
-|   Roads  |	https://roads.googleapis.com/v1/nearestRoads?points=60.170880,24.942795|60.170879,24.942796|60.170877,24.942796&key=KEY_HERE    |
-|   Geolocate  |   https://www.googleapis.com/geolocation/v1/geolocate?key=KEY_HERE |
+|  Name                 |  Endpoint |
+| --------------------- | --------- |
+|  Static Maps          | https://maps.googleapis.com/maps/api/staticmap?center=45%2C10&zoom=7&size=400x400&key=KEY_HERE   |
+|  Streetview           | https://maps.googleapis.com/maps/api/streetview?size=400x400&location=40.720032,-73.988354&fov=90&heading=235&pitch=10&key=KEY_HERE |
+|  Embed                | https://www.google.com/maps/embed/v1/place?q=place_id:ChIJyX7muQw8tokR2Vf5WBBk1iQ&key=KEY_HERE  |
+|  Directions           | https://maps.googleapis.com/maps/api/directions/json?origin=Disneyland&destination=Universal+Studios+Hollywood4&key=KEY_HERE    |
+|  Geocoding            | https://maps.googleapis.com/maps/api/geocode/json?latlng=40,30&key=KEY_HERE |
+|  Distance Matrix      | https://maps.googleapis.com/maps/api/distancematrix/json?units=imperial&origins=40.6655101,-73.89188969999998&destinations=40.6905615%2C-73.9976592%7C40.6905615%2C-73.9976592%7C40.6905615%2C-73.9976592%7C40.6905615%2C-73.9976592%7C40.6905615%2C-73.9976592%7C40.6905615%2C-73.9976592%7C40.659569%2C-73.933783%7C40.729029%2C-73.851524%7C40.6860072%2C-73.6334271%7C40.598566%2C-73.7527626%7C40.659569%2C-73.933783%7C40.729029%2C-73.851524%7C40.6860072%2C-73.6334271%7C40.598566%2C-73.7527626&key=KEY_HERE   |
+|  Find Place from Text | https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=Museum%20of%20Contemporary%20Art%20Australia&inputtype=textquery&fields=photos,formatted_address,name,rating,opening_hours,geometry&key=KEY_HERE    |
+|  Autocomplete         | https://maps.googleapis.com/maps/api/place/autocomplete/json?input=Bingh&types=%28cities%29&key=KEY_HERE    |
+|  Elevation            | https://maps.googleapis.com/maps/api/elevation/json?locations=39.7391536,-104.9847034&key=KEY_HERE  |
+|  Timezone             | https://maps.googleapis.com/maps/api/timezone/json?location=39.6034810,-119.6822510&timestamp=1331161200&key=KEY_HERE   |
+|  Roads                | https://roads.googleapis.com/v1/nearestRoads?points=60.170880,24.942795|60.170879,24.942796|60.170877,24.942796&key=KEY_HERE    |
+|  Geolocate            | https://www.googleapis.com/geolocation/v1/geolocate?key=KEY_HERE |
 
 
 Impact:
+
 * Consuming the company's monthly quota or can over-bill with unauthorized usage of this service and do financial damage to the company
 * Conduct a denial of service attack specific to the service if any limitation of maximum bill control settings exist in the Google account
 
@@ -207,14 +225,12 @@ $ AspDotNetWrapper.exe --decryptDataFilePath C:\DecryptedText.txt
 ```
 
 ### Mapbox API Token
-A Mapbox API Token is a JSON Web Token (JWT). If the header of the JWT is `sk`, jackpot. If it's `pk` or `tk`, it's not worth your time.
-```
-#Check token validity
-curl "https://api.mapbox.com/tokens/v2?access_token=YOUR_MAPBOX_ACCESS_TOKEN"
 
-#Get list of all tokens associated with an account. (only works if the token is a Secret Token (sk), and has the appropiate scope)
-curl "https://api.mapbox.com/tokens/v2/MAPBOX_USERNAME_HERE?access_token=YOUR_MAPBOX_ACCESS_TOKEN"
-```
+A Mapbox API Token is a JSON Web Token (JWT). If the header of the JWT is `sk`, jackpot. If it's `pk` or `tk`, it's not worth your time.
+
+* Check token validity: `curl "https://api.mapbox.com/tokens/v2?access_token=YOUR_MAPBOX_ACCESS_TOKEN"`
+* Get list of all tokens associated with an account (only works if the token is a Secret Token (sk), and has the appropriate scope): `curl "https://api.mapbox.com/tokens/v2/MAPBOX_USERNAME_HERE?access_token=YOUR_MAPBOX_ACCESS_TOKEN"`
+
 
 ## References
 
@@ -223,3 +239,4 @@ curl "https://api.mapbox.com/tokens/v2/MAPBOX_USERNAME_HERE?access_token=YOUR_MA
 * [Project Blacklist3r - November 23, 2018 - @notsosecure](https://www.notsosecure.com/project-blacklist3r/)
 * [Saying Goodbye to my Favorite 5 Minute P1 - Allyson O'Malley - January 6, 2020](https://www.allysonomalley.com/2020/01/06/saying-goodbye-to-my-favorite-5-minute-p1/)
 * [Mapbox API Token Documentation](https://docs.mapbox.com/help/troubleshooting/how-to-use-mapbox-securely/)
+* [Introducing SignSaboteur: forge signed web tokens with ease - Zakhar Fedotkin - 22 May 2024](https://portswigger.net/research/introducing-signsaboteur-forge-signed-web-tokens-with-ease)

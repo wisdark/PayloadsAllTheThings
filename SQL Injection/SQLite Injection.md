@@ -33,14 +33,15 @@ select sqlite_version();
 ```sql
 SELECT sql FROM sqlite_schema
 ```
-
+if sqlite_version > 3.33.0 
+```sql
+SELECT sql FROM sqlite_master
+```
 ## Integer/String based - Extract table name
 
 ```sql
-SELECT tbl_name FROM sqlite_master WHERE type='table' and tbl_name NOT like 'sqlite_%'
+SELECT group_concat(tbl_name) FROM sqlite_master WHERE type='table' and tbl_name NOT like 'sqlite_%'
 ```
-
-Use limit X+1 offset X, to extract all tables.
 
 ## Integer/String based - Extract column name
 
@@ -52,6 +53,12 @@ For a clean output
 
 ```sql
 SELECT replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(substr((substr(sql,instr(sql,'(')%2b1)),instr((substr(sql,instr(sql,'(')%2b1)),'')),"TEXT",''),"INTEGER",''),"AUTOINCREMENT",''),"PRIMARY KEY",''),"UNIQUE",''),"NUMERIC",''),"REAL",''),"BLOB",''),"NOT NULL",''),",",'~~') FROM sqlite_master WHERE type!='meta' AND sql NOT NULL AND name NOT LIKE 'sqlite_%' AND name ='table_name'
+```
+
+Cleaner output
+
+```sql
+SELECT GROUP_CONCAT(name) AS column_names FROM pragma_table_info('table_name');
 ```
 
 ## Boolean - Count number of tables

