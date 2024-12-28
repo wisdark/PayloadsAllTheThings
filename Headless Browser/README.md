@@ -1,19 +1,39 @@
 # Headless Browser
 
-A headless browser is a web browser without a graphical user interface. It works just like a regular browser, such as Chrome or Firefox, by interpreting HTML, CSS, and JavaScript, but it does so in the background, without displaying any visuals.
+> A headless browser is a web browser without a graphical user interface. It works just like a regular browser, such as Chrome or Firefox, by interpreting HTML, CSS, and JavaScript, but it does so in the background, without displaying any visuals.
 
-Headless browsers are primarily used for automated tasks, such as web scraping, testing, and running scripts. They are particularly useful in situations where a full-fledged browser is not needed, or where resources (like memory or CPU) are limited.
+> Headless browsers are primarily used for automated tasks, such as web scraping, testing, and running scripts. They are particularly useful in situations where a full-fledged browser is not needed, or where resources (like memory or CPU) are limited.
+
+
+## Summary
+
+* [Headless Commands](#headless-commands)
+* [Local File Read](#local-file-read)
+* [Debugging Port](#debugging-port)
+* [Network](#network)
+    * [Port Scanning](#port-scanning)
+    * [DNS Rebinding](#dns-rebinding)
+* [References](#references)
 
 
 ## Headless Commands
 
 Example of headless browsers commands:
 
-```ps1
-google-chrome --headless[=(new|old)] --print-to-pdf https://www.google.com
-firefox --screenshot https://www.google.com
-"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --headless --disable-gpu --window-size=1280,720 --screenshot="C:\tmp\screen.png" "https://google.com"
-```
+* Google Chrome
+    ```ps1
+    google-chrome --headless[=(new|old)] --print-to-pdf https://www.google.com
+    ```
+
+* Mozilla Firefox
+    ```ps1
+    firefox --screenshot https://www.google.com
+    ```
+
+* Microsoft Edge
+    ```ps1
+    "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --headless --disable-gpu --window-size=1280,720 --screenshot="C:\tmp\screen.png" "https://google.com"
+    ```
 
 
 ## Local File Read
@@ -41,7 +61,7 @@ Target: `google-chrome-stable --headless[=(new|old)] --print-to-pdf https://site
     ```
 
 
-## Debugging Port 
+## Debugging Port
 
 **Target**: `google-chrome-stable --headless=new --remote-debugging-port=XXXX ./index.html`   
 
@@ -106,11 +126,11 @@ Port Scanning: Timing attack
 
 ## References
 
-* [Attacking Headless Browsers - truff - 22/05/2024](#bb-discord-replay-not-available)
-* [Browser based Port Scanning with JavaScript - Nikolai Tschacher - January 10, 2021](https://incolumitas.com/2021/01/10/browser-based-port-scanning/)
-* [Post-Exploitation: Abusing Chrome's debugging feature to observe and control browsing sessions remotely - wunderwuzzi - Apr 28, 2020](https://embracethered.com/blog/posts/2020/chrome-spy-remote-control/)
-* [Node inspector/CEF debug abuse - HackTricks](https://book.hacktricks.xyz/linux-hardening/privilege-escalation/electron-cef-chromium-debugger-abuse)
-* [Chrome DevTools Protocol - Documentation](https://chromedevtools.github.io/devtools-protocol/)
-* [Cookies with Chromium’s Remote Debugger Port - Justin Bui - Dec 17, 2020](https://posts.specterops.io/hands-in-the-cookie-jar-dumping-cookies-with-chromiums-remote-debugger-port-34c4f468844e)
-* [Debugging Cookie Dumping Failures with Chromium’s Remote Debugger - Justin Bui - Jul 16, 2023](https://slyd0g.medium.com/debugging-cookie-dumping-failures-with-chromiums-remote-debugger-8a4c4d19429f)
-* [Tricks for Reliable Split-Second DNS Rebinding in Chrome and Safari - Daniel Thatcher - December 6, 2023](https://www.intruder.io/research/split-second-dns-rebinding-in-chrome-and-safari)
+- [Attacking Headless Browsers - truff - May 22, 2024](#bb-discord-replay-not-available)
+- [Browser based Port Scanning with JavaScript - Nikolai Tschacher - January 10, 2021](https://incolumitas.com/2021/01/10/browser-based-port-scanning/)
+- [Chrome DevTools Protocol - Documentation - July 3, 2017](https://chromedevtools.github.io/devtools-protocol/)
+- [Cookies with Chromium’s Remote Debugger Port - Justin Bui - December 17, 2020](https://posts.specterops.io/hands-in-the-cookie-jar-dumping-cookies-with-chromiums-remote-debugger-port-34c4f468844e)
+- [Debugging Cookie Dumping Failures with Chromium’s Remote Debugger - Justin Bui - July 16, 2023](https://slyd0g.medium.com/debugging-cookie-dumping-failures-with-chromiums-remote-debugger-8a4c4d19429f)
+- [Node inspector/CEF debug abuse - HackTricks - July 18, 2024](https://book.hacktricks.xyz/linux-hardening/privilege-escalation/electron-cef-chromium-debugger-abuse)
+- [Post-Exploitation: Abusing Chrome's debugging feature to observe and control browsing sessions remotely - wunderwuzzi - April 28, 2020](https://embracethered.com/blog/posts/2020/chrome-spy-remote-control/)
+- [Tricks for Reliable Split-Second DNS Rebinding in Chrome and Safari - Daniel Thatcher - December 6, 2023](https://www.intruder.io/research/split-second-dns-rebinding-in-chrome-and-safari)

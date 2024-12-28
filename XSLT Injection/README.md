@@ -2,26 +2,30 @@
 
 > Processing an un-validated XSL stylesheet can allow an attacker to change the structure and contents of the resultant XML, include arbitrary files from the file system, or execute arbitrary code
 
+
 ## Summary
 
-- [XSLT Injection](#xslt-injection)
-  - [Summary](#summary)
-  - [Tools](#tools)
-  - [Exploit](#exploit)
-    - [Determine the vendor and version](#determine-the-vendor-and-version)
+- [Tools](#tools)
+- [Methodology](#methodology)
+    - [Determine the Vendor And Version](#determine-the-vendor-and-version)
     - [External Entity](#external-entity)
-    - [Read files and SSRF using document](#read-files-and-ssrf-using-document)
-    - [Write files with EXSLT extension](#write-files-with-exslt-extension)
-    - [Remote Code Execution with PHP wrapper](#remote-code-execution-with-php-wrapper)
+    - [Read Files and SSRF Using Document](#read-files-and-ssrf-using-document)
+    - [Write Files with EXSLT Extension](#write-files-with-exslt-extension)
+    - [Remote Code Execution with PHP Wrapper](#remote-code-execution-with-php-wrapper)
     - [Remote Code Execution with Java](#remote-code-execution-with-java)
     - [Remote Code Execution with Native .NET](#remote-code-execution-with-native-net)
-  - [References](#references)
+- [Labs](#labs)
+- [References](#references)
+
 
 ## Tools
 
-## Exploit
+No known tools currently exist to assist with XSLT exploitation.
 
-### Determine the vendor and version
+
+## Methodology
+
+### Determine the Vendor and Version
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -45,6 +49,8 @@
 
 ### External Entity
 
+Don't forget to test for XXE when you encounter XSLT files.
+
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE dtd_sample[<!ENTITY ext_file SYSTEM "C:\secretfruit.txt">]>
@@ -60,7 +66,7 @@
 </xsl:stylesheet>
 ```
 
-### Read files and SSRF using document
+### Read Files and SSRF Using Document
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -80,7 +86,7 @@
 ```
 
 
-### Write files with EXSLT extension
+### Write Files with EXSLT Extension
 
 EXSLT, or Extensible Stylesheet Language Transformations, is a set of extensions to the XSLT (Extensible Stylesheet Language Transformations) language. EXSLT, or Extensible Stylesheet Language Transformations, is a set of extensions to the XSLT (Extensible Stylesheet Language Transformations) language. 
 
@@ -100,7 +106,7 @@ EXSLT, or Extensible Stylesheet Language Transformations, is a set of extensions
 ```
 
 
-### Remote Code Execution with PHP wrapper
+### Remote Code Execution with PHP Wrapper
 
 Execute the function `readfile`.
 
@@ -239,10 +245,15 @@ return proc.StandardOutput.ReadToEnd();
 ```
 
 
+## Labs
+
+- [Root Me - XSLT - Code execution](https://www.root-me.org/en/Challenges/Web-Server/XSLT-Code-execution)
+
+
 ## References
 
-* [From XSLT code execution to Meterpreter shells - @agarri - 02 July 2012](https://www.agarri.fr/blog/archives/2012/07/02/from_xslt_code_execution_to_meterpreter_shells/index.html)
-* [XSLT Injection - Fortify](https://vulncat.fortify.com/en/detail?id=desc.dataflow.java.xslt_injection)
-* [XSLT Injection Basics - Saxon](https://blog.hunniccyber.com/ektron-cms-remote-code-execution-xslt-transform-injection-java/)
-* [Getting XXE in Web Browsers using ChatGPT - Igor Sak-Sakovskiy - May 22, 2024](https://swarm.ptsecurity.com/xxe-chrome-safari-chatgpt/)
-* [XSLT injection lead to file creation - PT SWARM - 30 may 2024](https://twitter.com/ptswarm/status/1796162911108255974/photo/1)
+- [From XSLT code execution to Meterpreter shells - Nicolas Grégoire (@agarri) - July 2, 2012](https://www.agarri.fr/blog/archives/2012/07/02/from_xslt_code_execution_to_meterpreter_shells/index.html)
+- [XSLT Injection - Fortify - January 16, 2021](http://web.archive.org/web/20210116001237/https://vulncat.fortify.com/en/detail?id=desc.dataflow.java.xslt_injection)
+- [XSLT Injection Basics - Saxon - Hunnic Cyber Team - August 21, 2019](http://web.archive.org/web/20190821174700/https://blog.hunniccyber.com/ektron-cms-remote-code-execution-xslt-transform-injection-java/)
+- [Getting XXE in Web Browsers using ChatGPT - Igor Sak-Sakovskiy - May 22, 2024](https://swarm.ptsecurity.com/xxe-chrome-safari-chatgpt/)
+- [XSLT injection lead to file creation - PT SWARM (@ptswarm) - May 30, 2024](https://twitter.com/ptswarm/status/1796162911108255974/photo/1)
